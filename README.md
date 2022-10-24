@@ -1,0 +1,1 @@
+This repo contains a private Project to programm a 9-axis-IMU. The project is unfinished and don't work. I use a the microcontroller stm32f303vc, the gyroscope i3g4250d and the accelerometer & magnatic sensor lsm303agr.
