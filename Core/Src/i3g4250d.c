@@ -7,6 +7,7 @@
 #include "i3g4250d.h"
 
 /*private function prototypes--------------------------------------------------------------------------------*/
+
 static HAL_StatusTypeDef i3g4250d_readRegister(i3g4250d *handle, uint8_t reg, uint8_t *rxBuf, uint16_t size);
 static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uint8_t txBuf);
 static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,uint8_t txBuf);
@@ -17,12 +18,12 @@ static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,
 /* function:		i3g4250d_readRegister
  * description:		read i3g4250d register in blocking mode
  ***************************************************************
- * *handle:			pointer to sensor handle
- * reg:				address of register in sensor
- * *rxBuf:			Pointer to reception array
- * size:			size of data to be received in byte
+ * *handle:		pointer to sensor handle
+ * reg:			address of register in sensor
+ * *rxBuf:		Pointer to reception array
+ * size:		size of data to be received in byte
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 static HAL_StatusTypeDef i3g4250d_readRegister(i3g4250d *handle, uint8_t reg, uint8_t *rxBuf, uint16_t size)
 {
@@ -54,11 +55,11 @@ static HAL_StatusTypeDef i3g4250d_readRegister(i3g4250d *handle, uint8_t reg, ui
 /* function:		i3g4250d_writeRegister
  * description:		write i3g4250d register in blocking mode
  ***************************************************************
- * *handle:			pointer to sensor handle
- * reg:				address of register in sensor
- * txBuf:			data to be send
+ * *handle:		pointer to sensor handle
+ * reg:			address of register in sensor
+ * txBuf:		data to be send
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uint8_t txBuf)
 {
@@ -87,11 +88,11 @@ static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uin
 /* function:		i3g4250d_writeRegisterDMA
  * description:		write i3g4250d register in non blocking mode
  ***************************************************************
- * *handle:			pointer to sensor handle
- * reg:				address of register in sensor
- * txBuf:			data to be send
+ * *handle:		pointer to sensor handle
+ * reg:			address of register in sensor
+ * txBuf:		data to be send
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,uint8_t txBuf)
 {
@@ -113,14 +114,14 @@ static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,
 /* function:		i3g4250d_config
  * description:		setup the i3g4250d sensor handle and configure the setup registers
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  * *SPI_hspi		pointer to SPI handle
  * SPI_cs_Pin		SPI cs Pin number
  * SPI_cs_Reg		SPI cs register
  * SPI_hdma_rx		SPI rx to memory DMA handle
  * SPI_hdma_tx		memory to SPI tx DMA handle
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi, uint16_t SPI_cs_Pin, GPIO_TypeDef * SPI_cs_Reg, DMA_HandleTypeDef *SPI_hdma_rx, DMA_HandleTypeDef *SPI_hdma_tx)
 {
@@ -186,9 +187,9 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
 /* function:		i3g4250d_checkBlockedTask
  * description:		check if a task related to i3g4250d was blocked, because of a busy port and call that.
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:			-
+ * returns:		-
  */
 void i3g4250d_checkBlockedTask(i3g4250d *handle)
 {
@@ -224,12 +225,12 @@ void i3g4250d_checkBlockedTask(i3g4250d *handle)
 
 /* function:		i3g4250d_readSensorData
  * description:		read i3g4250d angular velocity raw data register in non blocking mode.
- * 					Raw Data will be saved in RxBuf array of handle.
- * 					SPI communication need to be finished with a high cs Pin and the i3g4250d-handle state need to be reset to finish.
+ * 			Raw Data will be saved in RxBuf array of handle.
+ * 			SPI communication need to be finished with a high cs Pin and the i3g4250d-handle state need to be reset to finish.
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle)
 {
@@ -250,12 +251,12 @@ HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle)
 
 /* function:		i3g4250d_calcTemperature
  * description:		calculate the angular velocity of i3g4250d with the raw values in the rxBuf array in the handle.
- * 					i3g4250d_readSensorData have to be called before this function and the DMA have to been finished the SPI communication
- * 					to get correct values.
+ * 			i3g4250d_readSensorData have to be called before this function and the DMA have to been finished the SPI communication
+ * 			to get correct values.
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 void i3g4250d_calcSensorData(i3g4250d *handle)
 {
@@ -281,9 +282,9 @@ void i3g4250d_calcSensorData(i3g4250d *handle)
 /* function:		i3g4250d_adjustRange
  * description:		adjusts the sensor range to the smallest value where all sensor values are included
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 {
@@ -332,9 +333,9 @@ HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 /* function:		i3g4250d_readTemperature
  * description:		read the temperature register of i3g4250d
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle)
 {
@@ -358,12 +359,12 @@ HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle)
 
 /* function:		i3g4250d_calcTemperature
  * description:		calculate the temperature of i3g4250d with the raw values in the rxBuf array in the handle.
- * 					i3g4250d_readTemperatur have to be called before this function and the DMA have to been finished the SPI communication
- * 					to get correct values.
+ * 			i3g4250d_readTemperatur have to be called before this function and the DMA have to been finished the SPI communication
+ * 			to get correct values.
  ***************************************************************
- * *handle:			pointer to sensor handle
+ * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:			state of transfer
+ * returns:		state of transfer
  */
 inline void i3g4250d_calcTemperature(i3g4250d *handle)
 {

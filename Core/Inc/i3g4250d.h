@@ -26,7 +26,7 @@ extern "C" {
 #define OUT_Y_H			0x2B
 #define OUT_Z_L			0x2C
 #define OUT_Z_H			0x2D
-#define FIFO_SRC_REG	0x2F
+#define FIFO_SRC_REG		0x2F
 #define INT1_SRC		0x31
 
 //Read-Write Registers
@@ -37,7 +37,7 @@ extern "C" {
 #define CTRL_REG4		0x23
 #define CTRL_REG5		0x24
 #define REFERENCE		0x25
-#define FIFO_CTRL_REG	0x2E
+#define FIFO_CTRL_REG		0x2E
 #define INT1_CFG		0x30
 #define INT1_THS_XH		0x32
 #define INT1_THS_XL		0x33
@@ -45,7 +45,7 @@ extern "C" {
 #define INT1_THS_YL		0x35
 #define INT1_THS_ZH		0x36
 #define INT1_THS_ZL		0x37
-#define INT1_DURATION	0x38
+#define INT1_DURATION		0x38
 
 //SPI state
 typedef enum _SensorState
@@ -60,21 +60,21 @@ typedef enum _SensorState
 //i3g4250d sensor handle
 typedef struct _i3g4250d
 {
-	SPI_HandleTypeDef 		*hspi;
-	DMA_HandleTypeDef 		*hdma_rx;
-	DMA_HandleTypeDef 		*hdma_tx;
-	uint16_t 				cs_Pin;
-	GPIO_TypeDef *			cs_Reg;
-	uint8_t 				rxBuf[7];
-	uint8_t 				txBuf[7];
-	float 					x;
-	float 					y;
-	float 					z;
-	int8_t 					temperature;
-	uint16_t 				measureMode;
-	uint8_t 				ctrl_reg4;
-	SensorState 			status;
-	SensorState 			next;
+	SPI_HandleTypeDef			*hspi;
+	DMA_HandleTypeDef			*hdma_rx;
+	DMA_HandleTypeDef			*hdma_tx;
+	uint16_t				cs_Pin;
+	GPIO_TypeDef				*cs_Reg;
+	uint8_t					rxBuf[7];
+	uint8_t					txBuf[7];
+	float					x;
+	float					y;
+	float					z;
+	int8_t					temperature;
+	uint16_t				measureMode;
+	uint8_t					ctrl_reg4;
+	SensorState				status;
+	SensorState				next;
 }i3g4250d;
 
 
