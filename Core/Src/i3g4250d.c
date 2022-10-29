@@ -249,14 +249,14 @@ HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle)
 	return HAL_SPI_TransmitReceive_DMA(handle->hspi,&handle->txBuf[0],&handle->rxBuf[0],6+1);
 }
 
-/* function:		i3g4250d_calcTemperature
+/* function:		i3g4250d_calcSensorData
  * description:		calculate the angular velocity of i3g4250d with the raw values in the rxBuf array in the handle.
  * 			i3g4250d_readSensorData have to be called before this function and the DMA have to been finished the SPI communication
  * 			to get correct values.
  ***************************************************************
  * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:		state of transfer
+ * returns:		-
  */
 void i3g4250d_calcSensorData(i3g4250d *handle)
 {

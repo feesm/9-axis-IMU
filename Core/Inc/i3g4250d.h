@@ -60,21 +60,21 @@ typedef enum _SensorState
 //i3g4250d sensor handle
 typedef struct _i3g4250d
 {
-	SPI_HandleTypeDef			*hspi;
-	DMA_HandleTypeDef			*hdma_rx;
-	DMA_HandleTypeDef			*hdma_tx;
-	uint16_t				cs_Pin;
-	GPIO_TypeDef				*cs_Reg;
-	uint8_t					rxBuf[7];
-	uint8_t					txBuf[7];
-	float					x;
-	float					y;
-	float					z;
-	int8_t					temperature;
-	uint16_t				measureMode;
-	uint8_t					ctrl_reg4;
-	SensorState				status;
-	SensorState				next;
+	SPI_HandleTypeDef	*hspi;
+	DMA_HandleTypeDef	*hdma_rx;
+	DMA_HandleTypeDef	*hdma_tx;
+	uint16_t		cs_Pin;
+	GPIO_TypeDef		*cs_Reg;
+	uint8_t			rxBuf[7];
+	uint8_t			txBuf[7];
+	float			x;
+	float			y;
+	float			z;
+	int8_t			temperature;
+	uint16_t		measureMode;
+	uint8_t			ctrl_reg4;
+	SensorState		status;
+	SensorState		next;
 }i3g4250d;
 
 

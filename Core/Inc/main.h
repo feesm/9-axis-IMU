@@ -32,6 +32,7 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "i3g4250d.h"
+#include "lsm303agr.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
