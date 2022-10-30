@@ -169,7 +169,7 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	//debug only
 	char a[80]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	sprintf(&a[0],"X: %f\tY: %f\tZ: %f\tT: %d\n",heCompass.x_A,heCompass.y_A,heCompass.z_A,0);
-	CDC_Transmit_FS(&a[0],70);
+	CDC_Transmit_FS((uint8_t*)&a[0],70);
 
 }
 

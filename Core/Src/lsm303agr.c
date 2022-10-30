@@ -10,8 +10,8 @@
 /* private function prototypes--------------------------------------------------------------*/
 
 
-static void lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t *buf, uint8_t size);
-static void lsm303agr_writeRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t buf, uint8_t size);
+static HAL_StatusTypeDef lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t *buf, uint8_t size);
+static HAL_StatusTypeDef lsm303agr_writeRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t buf, uint8_t size);
 static void lsm303agr_getMultiplicator(lsm303agr *handle);
 
 
@@ -24,18 +24,18 @@ static void lsm303agr_getMultiplicator(lsm303agr *handle);
  * *handle:		pointer to sensor handle
  * address		I2C address of sensor
  * reg			sensor register
- * *rxBuf		pointer	to reception array
+ * *rxBuf		pointer to reception array
  * size			size of data to be received in byte
  ***************************************************************
- * returns:		-
+ * returns:		state of transfer
  */
-void lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t reg, uint8_t *rxBuf, uint8_t size)
+static HAL_StatusTypeDef lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t reg, uint8_t *rxBuf, uint8_t size)
 {
-	HAL_I2C_Mem_Read(handle->hi2c,address<<1,reg|(size==1?0x00:0x80),1,rxBuf,size,10);
+	return HAL_I2C_Mem_Read(handle->hi2c,address<<1,reg|(size==1?0x00:0x80),1,rxBuf,size,10);
 }
 
 /* function:		lsm303agr_writeRegister
- * description:		write lsm303agr register in blocking mode with I2C
+ * description:	write lsm303agr register in blocking mode with I2C
  ***************************************************************
  * *handle:		pointer to sensor handle
  * address		I2C address of sensor
@@ -43,15 +43,15 @@ void lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t reg, uin
  * *txBuf		data to be send
  * size			size of data to be received in byte
  ***************************************************************
- * returns:		-
+ * returns:		state of transfer
  */
-void lsm303agr_writeRegister(lsm303agr *handle, uint8_t address, uint8_t reg, uint8_t txBuf, uint8_t size)
+static HAL_StatusTypeDef lsm303agr_writeRegister(lsm303agr *handle, uint8_t address, uint8_t reg, uint8_t txBuf, uint8_t size)
 {
-	HAL_I2C_Mem_Write(handle->hi2c,address<<1,reg|(size==1?0x00:0x80),1,&txBuf,size,10);
+	return HAL_I2C_Mem_Write(handle->hi2c,address<<1,reg|(size==1?0x00:0x80),1,&txBuf,size,10);
 }
 
 /* function:		lsm303agr_getMultiplicator
- * description:		get the Multiplicator for acceleration values with precision and sensor range
+ * description:		get the multiplicator for acceleration values with precision and sensor range
  ***************************************************************
  * *handle:		pointer to sensor handle
  ***************************************************************
@@ -109,17 +109,18 @@ static void lsm303agr_getMultiplicator(lsm303agr *handle)
  */
 
 /* function:		lsm303agr_config
- * description:		setup the lsm303agr sensor handle and configure the setup registers
+ * description:	setup the lsm303agr sensor handle and configure the setup registers
  ***************************************************************
  * *handle:		pointer to sensor handle
  * *I2C_hi2c		pointer to SPI handle
  * I2C_hdma_rx		I2C rx to memory DMA handle
  * I2C_hdma_tx		memory to I2C tx DMA handle
  ***************************************************************
- * returns:		-
+ * returns:		state of transfer
  */
-void lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2c, DMA_HandleTypeDef *I2C_hdma_rx, DMA_HandleTypeDef *I2C_hdma_tx)
+HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2c, DMA_HandleTypeDef *I2C_hdma_rx, DMA_HandleTypeDef *I2C_hdma_tx)
 {
+	HAL_StatusTypeDef status = HAL_OK;
 	//setup sensor related variables
 	handle->hi2c = I2C_hi2c;
 	handle->hdma_rx = I2C_hdma_rx;
@@ -128,10 +129,14 @@ void lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2c, DMA_Handle
 	handle->maxAbsValue_A=2;
 	lsm303agr_getMultiplicator(handle);
 	//write setup registers
-	lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG3_A, 0x10,1);
-	lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG1_A, 0x77,1);
-	lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG4_A, 0x08,1);
-
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG3_A, 0x10,1);
+	if(status != HAL_OK)
+		return status;
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG1_A, 0x77,1);
+	if(status != HAL_OK)
+		return status;
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG4_A, 0x08,1);
+	return status;
 }
 
 /* function:		lsm303agr_readSensorData_A
@@ -140,16 +145,16 @@ void lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2c, DMA_Handle
  ***************************************************************
  * *handle:		pointer to sensor handle
  ***************************************************************
- * returns:		-
+ * returns:		state of transfer
  */
-void lsm303agr_readSensorData_A(lsm303agr *handle)
+HAL_StatusTypeDef lsm303agr_readSensorData_A(lsm303agr *handle)
 {
 	handle->txBuf[0]=OUT_X_L_A | 0x80;
-	HAL_I2C_Mem_Read_DMA(handle->hi2c,ACCELEROMETER<<1,handle->txBuf[0],1,&handle->rxBuf[0],6);
+	return HAL_I2C_Mem_Read_DMA(handle->hi2c,ACCELEROMETER<<1,handle->txBuf[0],1,&handle->rxBuf[0],6);
 }
 
 /* function:		lsm303agr_calcSensorData_A
- * description:		calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
+ * description:	calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
  * 			lsm303agr_readSensorData_A have to be called before this function and the DMA have to been finished the SPI communication
  * 			to get correct values.
  ***************************************************************

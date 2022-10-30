@@ -107,10 +107,10 @@ typedef struct lsm303agr_
 /*public function prototypes--------------------------------------------------------------------------------*/
 
 
-void lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_i2c, DMA_HandleTypeDef *I2C_hdma_rx, DMA_HandleTypeDef *I2C_hdma_tx);
-void lsm303agr_readSensorData_A(lsm303agr *handle);
+HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_i2c, DMA_HandleTypeDef *I2C_hdma_rx, DMA_HandleTypeDef *I2C_hdma_tx);
+HAL_StatusTypeDef lsm303agr_readSensorData_A(lsm303agr *handle);
 void lsm303agr_calcSensorData_A(lsm303agr *handle);
-void lsm303agr_readSensorData_M(lsm303agr *handle);
+HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle);
 void lsm303agr_calcSensorData_M(lsm303agr *handle);
 
 #ifdef __cplusplus
