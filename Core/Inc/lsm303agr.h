@@ -1,7 +1,7 @@
 /*
  * lsm303agr.h
  *
- *  Created on: Oct 8, 2022
+ *  Created on: Oct 29, 2022
  *      Author: Moritz
  */
 
@@ -71,7 +71,7 @@ extern "C" {
 #define CFG_REG_A_M		0x60
 #define CFG_REG_B_M		0x61
 #define CFG_REG_C_M		0x62
-#define INT_CRTL_REG_M		0x63
+#define INT_CTRL_REG_M		0x63
 #define INT_SOURCE_REG_M	0x64
 #define INT_THS_L_REG_M		0x65
 #define INT_THS_H_REG_M		0x66
@@ -111,7 +111,9 @@ HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_i2c
 HAL_StatusTypeDef lsm303agr_readSensorData_A(lsm303agr *handle);
 void lsm303agr_calcSensorData_A(lsm303agr *handle);
 HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle);
+HAL_StatusTypeDef lsm303agr_setSingleMode_M(lsm303agr *handle);
 void lsm303agr_calcSensorData_M(lsm303agr *handle);
+
 
 #ifdef __cplusplus
 extern }

@@ -9,7 +9,6 @@
 
 /* private function prototypes--------------------------------------------------------------*/
 
-
 static HAL_StatusTypeDef lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t *buf, uint8_t size);
 static HAL_StatusTypeDef lsm303agr_writeRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t buf, uint8_t size);
 static void lsm303agr_getMultiplicator(lsm303agr *handle);
@@ -129,13 +128,22 @@ HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2
 	handle->maxAbsValue_A=2;
 	lsm303agr_getMultiplicator(handle);
 	//write setup registers
-	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG3_A, 0x10,1);
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG3_A, 0x10, 1);
 	if(status != HAL_OK)
 		return status;
-	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG1_A, 0x77,1);
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG1_A, 0x77, 1);
 	if(status != HAL_OK)
 		return status;
-	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG4_A, 0x08,1);
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG4_A, 0x08, 1);
+	if(status != HAL_OK)
+		return status;
+	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_A_M, 0x81, 1);
+	if(status != HAL_OK)
+		return status;
+	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_B_M, 0x01, 1);
+	if(status != HAL_OK)
+		return status;
+	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_C_M, 0x01, 1);
 	return status;
 }
 
@@ -154,7 +162,7 @@ HAL_StatusTypeDef lsm303agr_readSensorData_A(lsm303agr *handle)
 }
 
 /* function:		lsm303agr_calcSensorData_A
- * description:	calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
+ * description:		calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
  * 			lsm303agr_readSensorData_A have to be called before this function and the DMA have to been finished the SPI communication
  * 			to get correct values.
  ***************************************************************
@@ -173,4 +181,52 @@ void lsm303agr_calcSensorData_A(lsm303agr *handle)
 	handle->x_A=raw[0]*handle->multiplicator_A;
 	handle->y_A=raw[1]*handle->multiplicator_A;
 	handle->z_A=raw[2]*handle->multiplicator_A;
+}
+
+/* function:		lsm303agr_readSensorData_M
+ * description:		read lsm303agr magnetic raw data register in non blocking mode.
+ * 			Raw Data will be saved in RxBuf array of handle.
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ ***************************************************************
+ * returns:		state of transfer
+ */
+HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle)
+{
+	handle->txBuf[0]=OUTX_L_REG_M | 0x80;
+	return HAL_I2C_Mem_Read_DMA(handle->hi2c,MAGNETICSENSOR<<1,handle->txBuf[0],1,&handle->rxBuf[0],6);
+}
+
+/* function:		lsm303agr_readSensorData_M
+ * description:		write lsm303agr's CFG_REG_A_M register to set the magnetic sensor to single mode
+ * 			after new data is available,  lsm303agr be automatically set in idle mode
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ ***************************************************************
+ * returns:		state of transfer
+ */
+HAL_StatusTypeDef lsm303agr_setSingleMode_M(lsm303agr *handle)
+{
+	handle->txBuf[0] = CFG_REG_A_M;
+	handle->txBuf[1] = 0x81;
+	return HAL_I2C_Master_Transmit_DMA(handle->hi2c,MAGNETICSENSOR<<1,&handle->txBuf[0],2);
+}
+
+/* function:		lsm303agr_calcSensorData_M
+ * description:		calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
+ * 			lsm303agr_readSensorData_A have to be called before this function and the DMA have to been finished the SPI communication
+ * 			to get correct values.
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ ***************************************************************
+ * returns:		-
+ */
+void lsm303agr_calcSensorData_M(lsm303agr *handle)
+{
+	int16_t raw[3];
+	for(int i=0;i<3;i++)
+		raw[i]=handle->rxBuf[2*i]|handle->rxBuf[2*i+1]<<8;
+	handle->x_M=raw[0]*0.0015;
+	handle->y_M=raw[1]*0.0015;
+	handle->z_M=raw[2]*0.0015;
 }
