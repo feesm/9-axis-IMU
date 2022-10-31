@@ -56,14 +56,18 @@ extern "C" {
 #define INT1_DURATION		0x38
 
 //SPI state
-typedef enum _SensorState
+typedef enum _i3g4250d_sensorTask
 {
-	FINISH=0x00,
-	READSENSORDATA=0x01,
-	READTEMPERATURE=0x02,
-	ADJUSTRANGE=0x03,
-	TRANSMITTING=0x04
-}SensorState;
+	i3g4250d_NONE = 0x00,
+	i3g4250d_GETANGULARRATE = 0x10,
+	i3g4250d_GETTEMPERATURE = 0x11,
+	i3g4250d_TRANSMITTING = 0x20,
+	i3g4250d_CHANGEANGRANGE = 0x30,
+	i3g4250d_CHANGEANGRANGE245DPS = 0x31,
+	i3g4250d_CHANGEANGRANGE500DPS = 0x32,
+	i3g4250d_CHANGEANGRANGE2000DPS = 0x33,
+
+}i3g4250d_sensorTask;
 
 //i3g4250d sensor handle
 typedef struct _i3g4250d
@@ -81,8 +85,8 @@ typedef struct _i3g4250d
 	int8_t			temperature;
 	uint16_t		measureMode;
 	uint8_t			ctrl_reg4;
-	SensorState		status;
-	SensorState		next;
+	i3g4250d_sensorTask	status;
+	i3g4250d_sensorTask	next;
 }i3g4250d;
 
 
