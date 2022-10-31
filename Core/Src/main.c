@@ -55,6 +55,7 @@ TIM_HandleTypeDef htim17;
 /* USER CODE BEGIN PV */
 i3g4250d hgyro1;
 lsm303agr heCompass;
+int outputMode = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,6 +78,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		case Blue_Push_Button_Pin:	//blue button is pressed
 		{
+			//DEBUG: change which sensor value is send via USB
+			if(outputMode != 2)
+				++outputMode;
+			else
+				outputMode = 0;
 			break;
 		}
 		case DRDY_INT2_Pin:	//i3g4250d has new data available
@@ -108,6 +114,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 	else if (htim == &htim17 )//50Hz
 	{
+		//DEBUG: send sensor values via USB
+		char tempChar[40];
+		for(int i=0; i<40; i++)
+			tempChar[i] = 0;
+		if(outputMode == 0)
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",hgyro1.x,hgyro1.y,hgyro1.z);
+		else if(outputMode == 1)
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_A,heCompass.y_A,heCompass.z_A);
+		else
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_M,heCompass.y_M,heCompass.z_M);
+		CDC_Transmit_FS((uint8_t*)&tempChar[0],40);
+
 		i3g4250d_checkBlockedTask(&hgyro1);
 	}
 }
