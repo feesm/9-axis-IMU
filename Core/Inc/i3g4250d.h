@@ -85,8 +85,8 @@ typedef struct _i3g4250d
 	int8_t			temperature;
 	uint16_t		measureMode;
 	uint8_t			ctrl_reg4;
-	i3g4250d_sensorTask	status;
-	i3g4250d_sensorTask	next;
+	i3g4250d_sensorTask	currentTask;
+	i3g4250d_sensorTask	nextTask;
 }i3g4250d;
 
 

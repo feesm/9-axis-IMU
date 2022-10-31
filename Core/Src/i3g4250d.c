@@ -30,10 +30,10 @@ static HAL_StatusTypeDef i3g4250d_readRegister(i3g4250d *handle, uint8_t reg, ui
 	HAL_StatusTypeDef status = HAL_OK;
 
 	//check sensor state
-	if(handle->status!=i3g4250d_NONE)
+	if(handle->currentTask!=i3g4250d_NONE)
 		return HAL_BUSY;
 
-	handle->status=i3g4250d_TRANSMITTING;
+	handle->currentTask=i3g4250d_TRANSMITTING;
 
 	handle->txBuf[0] = reg|(size==1?0x80:0xC0);
 
@@ -46,7 +46,7 @@ static HAL_StatusTypeDef i3g4250d_readRegister(i3g4250d *handle, uint8_t reg, ui
 
 	if(status != HAL_BUSY)
 	{
-		handle->status = i3g4250d_NONE;
+		handle->currentTask = i3g4250d_NONE;
 		HAL_GPIO_WritePin(handle->cs_Reg, handle->cs_Pin, GPIO_PIN_SET);
 	}
 	return status;
@@ -66,10 +66,10 @@ static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uin
 	HAL_StatusTypeDef status = HAL_OK;
 
 	//check sensor state
-	if(handle->status!=i3g4250d_NONE)
+	if(handle->currentTask!=i3g4250d_NONE)
 		return HAL_BUSY;
 
-	handle->status = i3g4250d_TRANSMITTING;
+	handle->currentTask = i3g4250d_TRANSMITTING;
 
 	handle->txBuf[0] = reg;
 	handle->txBuf[1] = txBuf;
@@ -79,7 +79,7 @@ static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uin
 
 	if(status != HAL_BUSY)
 	{
-		handle->status = i3g4250d_NONE;
+		handle->currentTask = i3g4250d_NONE;
 		HAL_GPIO_WritePin(handle->cs_Reg, handle->cs_Pin, GPIO_PIN_SET);
 	}
 	return status;
@@ -97,13 +97,13 @@ static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uin
 static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,uint8_t txBuf)
 {
 	//check sensor state
-	if(handle->status!=i3g4250d_NONE)
+	if(handle->currentTask!=i3g4250d_NONE)
 	{
 		//HAL_GPIO_WritePin(((GPIO_TypeDef *) ((0x40000000UL + 0x08000000UL) + 0x00001000UL)),((uint16_t)0x0100U),1);
 		return HAL_BUSY;
 	}
 
-	handle->status=i3g4250d_TRANSMITTING;
+	handle->currentTask=i3g4250d_TRANSMITTING;
 	//setup SPI registers
 	handle->txBuf[0]=reg;
 	handle->txBuf[1]=txBuf;
@@ -141,8 +141,8 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
 		handle->txBuf[i] = 0x00;
 	}
 	handle->temperature = 0x00;
-	handle->status = i3g4250d_NONE;
-	handle->next = i3g4250d_NONE;
+	handle->currentTask = i3g4250d_NONE;
+	handle->nextTask = i3g4250d_NONE;
 
 	//write setup-registers
 	uint8_t ctrl_reg4 = 0x00;
@@ -196,31 +196,31 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
  */
 void i3g4250d_checkBlockedTask(i3g4250d *handle)
 {
-	if(handle->next==i3g4250d_NONE)
+	if(handle->nextTask==i3g4250d_NONE)
 		return;
-	switch(handle->next)
+	switch(handle->nextTask)
 	{
 	case i3g4250d_GETANGULARRATE:
 		{
-			handle->next=i3g4250d_NONE;
+			handle->nextTask=i3g4250d_NONE;
 			i3g4250d_readSensorData(handle);
 			break;
 		}
 	case i3g4250d_GETTEMPERATURE:
 		{
-			handle->next=i3g4250d_NONE;
+			handle->nextTask=i3g4250d_NONE;
 			i3g4250d_readTemperature(handle);
 			break;
 		}
 	case i3g4250d_CHANGEANGRANGE:
 		{
-			handle->next=i3g4250d_NONE;
+			handle->nextTask=i3g4250d_NONE;
 			i3g4250d_adjustRange(handle);
 			break;
 		}
 	default:
 		{
-			handle->next=i3g4250d_NONE;
+			handle->nextTask=i3g4250d_NONE;
 			break;
 		}
 	}
@@ -238,15 +238,15 @@ void i3g4250d_checkBlockedTask(i3g4250d *handle)
 HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle)
 {
 	//check if SPI, DMA or sensor is busy
-	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->status!=i3g4250d_NONE)
+	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->currentTask!=i3g4250d_NONE)
 	{
-		handle->next=i3g4250d_GETANGULARRATE;
+		handle->nextTask=i3g4250d_GETANGULARRATE;
 		return HAL_BUSY;
 	}
 	handle->txBuf[0]=OUT_X_L|0xC0;
 	for(int i=0x01;i<7;i++)
 		handle->txBuf[i]=0x00;
-	handle->status=i3g4250d_GETANGULARRATE;
+	handle->currentTask=i3g4250d_GETANGULARRATE;
 	//setup DMA for Reading SensorData
 	HAL_GPIO_WritePin(GPIOE,handle->cs_Pin,GPIO_PIN_RESET);
 	return HAL_SPI_TransmitReceive_DMA(handle->hspi,&handle->txBuf[0],&handle->rxBuf[0],6+1);
@@ -279,7 +279,7 @@ void i3g4250d_calcSensorData(i3g4250d *handle)
 	handle->x=raw[0]*fac;
 	handle->y=raw[1]*fac;
 	handle->z=raw[2]*fac;
-	handle->status=i3g4250d_NONE;
+	handle->currentTask=i3g4250d_NONE;
 }
 
 /* function:		i3g4250d_adjustRange
@@ -292,9 +292,9 @@ void i3g4250d_calcSensorData(i3g4250d *handle)
 HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 {
 	//check if SPI or DMA is busy
-	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->status!=i3g4250d_NONE)
+	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->currentTask!=i3g4250d_NONE)
 	{
-		handle->next=i3g4250d_CHANGEANGRANGE;
+		handle->nextTask=i3g4250d_CHANGEANGRANGE;
 		return HAL_BUSY;
 	}
 	//check if all values are included in the smallest sensor range
@@ -340,12 +340,12 @@ HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle)
 {
 	//check if SPI or DMA is busy
-	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->status!=i3g4250d_NONE)
+	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->currentTask!=i3g4250d_NONE)
 	{
-		handle->next=i3g4250d_GETTEMPERATURE;
+		handle->nextTask=i3g4250d_GETTEMPERATURE;
 		return HAL_BUSY;
 	}
-	handle->status=i3g4250d_GETTEMPERATURE;
+	handle->currentTask=i3g4250d_GETTEMPERATURE;
 
 	//setup SPI registers
 	handle->txBuf[0]=OUT_TEMP|0x80;
@@ -369,7 +369,7 @@ HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle)
 inline void i3g4250d_calcTemperature(i3g4250d *handle)
 {
 	handle->temperature=40-((int8_t)handle->rxBuf[1]);
-	handle->status=i3g4250d_NONE;
+	handle->currentTask=i3g4250d_NONE;
 }
 
 

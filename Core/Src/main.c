@@ -137,23 +137,23 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		//finish SPI communication
 		HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
 
-		if(hgyro1.status==i3g4250d_GETANGULARRATE)	//new raw sensor data available
+		if(hgyro1.currentTask==i3g4250d_GETANGULARRATE)	//new raw sensor data available
 		{
 			//reset SPI state
-			hgyro1.status=NONE;
+			hgyro1.currentTask=NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
 			//adjust sensor range
 			i3g4250d_adjustRange(&hgyro1);
 		}
-		else if(hgyro1.status==i3g4250d_GETTEMPERATURE) //new raw temperature data available
+		else if(hgyro1.currentTask==i3g4250d_GETTEMPERATURE) //new raw temperature data available
 		{
 			//calculate temperature data
 			i3g4250d_calcTemperature(&hgyro1);
 		}
 		else
 		{
-			hgyro1.status=NONE;
+			hgyro1.currentTask=NONE;
 		}
 		i3g4250d_checkBlockedTask(&hgyro1);
 	}
@@ -163,15 +163,15 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if(hspi==&hspi1)	//finished transmitting data from i3g4250d
 	{
-		if(hgyro1.status==i3g4250d_TRANSMITTING)
+		if(hgyro1.currentTask==i3g4250d_TRANSMITTING)
 		{
 			//finish SPI communication
 			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
-			hgyro1.status=NONE;
+			hgyro1.currentTask=NONE;
 		}
 		else
 		{
-			hgyro1.status=NONE;
+			hgyro1.currentTask=NONE;
 		}
 		i3g4250d_checkBlockedTask(&hgyro1);
 	}
