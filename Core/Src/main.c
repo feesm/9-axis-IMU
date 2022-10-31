@@ -85,9 +85,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			i3g4250d_readSensorData(&hgyro1);
 			break;
 		}
-		case MEMS_INT_INT3_Pin:	//lsm303agr has new data available
+		case MEMS_INT_INT3_Pin:	//lsm303agr has new acceleration data available
 		{
 			lsm303agr_readSensorData_A(&heCompass);
+			break;
+		}
+		case DRDY_Pin:	//lsm303agr has new magnetic data available
+		{
+			lsm303agr_readSensorData_M(&heCompass);
 			break;
 		}
 	}
@@ -104,11 +109,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	else if (htim == &htim17 )//50Hz
 	{
 		i3g4250d_checkBlockedTask(&hgyro1);
-		if(HAL_GPIO_ReadPin(GPIOE,DRDY_INT2_Pin))
-		{
-			//read data register manually to avoid a failure
-			i3g4250d_readSensorData(&hgyro1);
-		}
 	}
 }
 //SPI DMA finished receiving and transmitting data
@@ -164,13 +164,54 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 }
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	lsm303agr_calcSensorData_A(&heCompass);
-	HAL_GPIO_TogglePin(GPIOE,LD7_Pin);
-	//debug only
-	char a[80]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	sprintf(&a[0],"X: %f\tY: %f\tZ: %f\tT: %d\n",heCompass.x_A,heCompass.y_A,heCompass.z_A,0);
-	CDC_Transmit_FS((uint8_t*)&a[0],70);
+	if(hi2c == heCompass.hi2c)
+	{
+		switch(heCompass.currentTask)
+		{
+			case GetAcceleration:
+			{
+				lsm303agr_calcSensorData_A(&heCompass);
+				heCompass.currentTask = NONE;
+				break;
+			}
+			case GetMagneticFieldStrength:
+			{
+				lsm303agr_calcSensorData_M(&heCompass);
+				heCompass.currentTask = NONE;
+				break;
+			}
+			default:
+			{
+				heCompass.currentTask = NONE;
+				break;
 
+			}
+		}
+		lsm303agr_startNextTask(&heCompass);
+	}
+
+
+
+}
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	if(hi2c == heCompass.hi2c)
+	{
+		switch(heCompass.currentTask)
+		{
+			case SetSingleMode:
+			{
+				heCompass.currentTask = NONE;
+				break;
+			}
+			default:
+			{
+				heCompass.currentTask = NONE;
+				break;
+			}
+		}
+		lsm303agr_startNextTask(&heCompass);
+	}
 }
 
 
@@ -476,9 +517,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, LD4_Pin|LD3_Pin|LD5_Pin|LD7_Pin
                           |LD9_Pin|LD10_Pin|LD8_Pin|LD6_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : DRDY_Pin MEMS_INT4_Pin */
-  GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  /*Configure GPIO pins : DRDY_Pin DRDY_INT2_Pin */
+  GPIO_InitStruct.Pin = DRDY_Pin|DRDY_INT2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
@@ -499,17 +540,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(MEMS_INT_INT3_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : MEMS_INT4_Pin */
+  GPIO_InitStruct.Pin = MEMS_INT4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(MEMS_INT4_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : Blue_Push_Button_Pin */
   GPIO_InitStruct.Pin = Blue_Push_Button_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Blue_Push_Button_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : DRDY_INT2_Pin */
-  GPIO_InitStruct.Pin = DRDY_INT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DRDY_INT2_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
@@ -517,6 +558,9 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
