@@ -238,7 +238,7 @@ void i3g4250d_checkBlockedTask(i3g4250d *handle)
 HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle)
 {
 	//check if SPI, DMA or sensor is busy
-	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->currentTask!=i3g4250d_NONE)
+	if(!I3G4250D_READY(handle))
 	{
 		handle->nextTask=i3g4250d_GETANGULARRATE;
 		return HAL_BUSY;
@@ -292,7 +292,7 @@ void i3g4250d_calcSensorData(i3g4250d *handle)
 HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 {
 	//check if SPI or DMA is busy
-	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->currentTask!=i3g4250d_NONE)
+	if(!I3G4250D_READY(handle))
 	{
 		handle->nextTask=i3g4250d_CHANGEANGRANGE;
 		return HAL_BUSY;
@@ -340,7 +340,7 @@ HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle)
 {
 	//check if SPI or DMA is busy
-	if(handle->hdma_tx->State!=0x01||handle->hdma_tx->State!=0x01||handle->hspi->State!=0x01||handle->currentTask!=i3g4250d_NONE)
+	if(!I3G4250D_READY(handle))
 	{
 		handle->nextTask=i3g4250d_GETTEMPERATURE;
 		return HAL_BUSY;

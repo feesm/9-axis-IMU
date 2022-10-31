@@ -15,6 +15,10 @@ extern "C" {
 //includes
 #include "stm32f3xx_hal.h"
 
+#define I3G4250D_READY(phandle)  (phandle->currentTask==i3g4250d_NONE \
+		&& phandle->hspi->State == HAL_SPI_STATE_READY \
+		&& phandle->hdma_tx->State == HAL_DMA_STATE_READY \
+		&& phandle->hdma_rx->State == HAL_DMA_STATE_READY)
 #ifndef INRANGE
 #define INRANGE(value, minValue, maxValue) (value <= maxValue \
 		&& value >= minValue)
