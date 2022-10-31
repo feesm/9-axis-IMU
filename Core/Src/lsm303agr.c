@@ -12,7 +12,9 @@
 static HAL_StatusTypeDef lsm303agr_readRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t *buf, uint8_t size);
 static HAL_StatusTypeDef lsm303agr_writeRegister(lsm303agr *handle, uint8_t address, uint8_t register, uint8_t buf, uint8_t size);
 static void lsm303agr_getMultiplicator(lsm303agr *handle);
-static int lsm303agr_addToTaskQueue(lsm303agr *handle, lsm303agr_sensorTask task);
+static uint8_t lsm303agr_addToTaskQueue(lsm303agr *handle, lsm303agr_sensorTask task);
+static HAL_StatusTypeDef lsm303agr_changeRange_A(lsm303agr *handle, uint8_t range);
+static void lsm303agr_adjustRange_A(lsm303agr *handle);
 
 /* private function definitions-------------------------------------------------------------*/
 
@@ -34,7 +36,7 @@ static HAL_StatusTypeDef lsm303agr_readRegister(lsm303agr *handle, uint8_t addre
 }
 
 /* function:		lsm303agr_writeRegister
- * description:	write lsm303agr register in blocking mode with I2C
+ * description:		write lsm303agr register in blocking mode with I2C
  ***************************************************************
  * *handle:		pointer to sensor handle
  * address		I2C address of sensor
@@ -110,7 +112,7 @@ static void lsm303agr_getMultiplicator(lsm303agr *handle)
  ***************************************************************
  * returns:		success of function
  */
-static int lsm303agr_addToTaskQueue(lsm303agr *handle, lsm303agr_sensorTask task)
+static uint8_t lsm303agr_addToTaskQueue(lsm303agr *handle, lsm303agr_sensorTask task)
 {
 	for(int i = 0; i < LSM303AGR_TASKQUEUESIZE; i++)
 		if(handle->nextTask[i] == NONE)
@@ -119,6 +121,118 @@ static int lsm303agr_addToTaskQueue(lsm303agr *handle, lsm303agr_sensorTask task
 			return SUCCESS;
 		}
 	return ERROR;
+}
+
+/* function:		lsm303agr_changeRange
+ * description:		change lsm303agr full-scale
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ * range:		new sensor acceleration range
+ ***************************************************************
+ * returns:		state of transfer
+ */
+static HAL_StatusTypeDef lsm303agr_changeRange_A(lsm303agr *handle, uint8_t range)
+{
+	if(!LSM303AGR_READY(handle))
+	{
+		lsm303agr_sensorTask task;
+		switch(range)
+		{
+			case 2:
+			{
+				task = ChangeAccRange2g;
+				break;
+			}
+			case 4:
+			{
+				task = ChangeAccRange4g;
+				break;
+			}
+			case 8:
+			{
+				task = ChangeAccRange8g;
+				break;
+			}
+			case 16:
+			{
+				task = ChangeAccRange16g;
+				break;
+			}
+			default:
+			{
+				return HAL_ERROR;
+			}
+		}
+		if(lsm303agr_addToTaskQueue(handle, task) == SUCCESS)
+			return HAL_BUSY;
+		else
+			return HAL_ERROR;
+	}
+	handle->currentTask = ChangeAccRange;
+	uint8_t fs = 0x00;
+	switch(range)
+	{
+		case 2:
+		{
+			fs = 0x00;
+			break;
+		}
+		case 4:
+		{
+			fs = 0x01;
+			break;
+		}
+		case 8:
+		{
+			fs = 0x02;
+			break;
+		}
+		case 16:
+		{
+			fs = 0x03;
+			break;
+		}
+		default:
+		{
+			return HAL_ERROR;
+		}
+	}
+	handle->maxAbsValue_A = range;
+	lsm303agr_getMultiplicator(handle);
+	handle->rxBuf[0] = CTRL_REG4_A;
+	handle->rxBuf[1] = DEFAULT_CTRL_REG4_A | (fs<<4);
+	return HAL_I2C_Master_Transmit_DMA(handle->hi2c, ACCELEROMETER<<1, handle->rxBuf, 2);
+}
+
+/* function:		lsm303agr_adjustRange
+ * description:		adjust acceleration full scale to best value
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ ***************************************************************
+ * returns:		-
+ */
+static void lsm303agr_adjustRange_A(lsm303agr *handle)
+{
+	if(LSM303AGR_ACCINRANGE(handle, -1.9F, 1.9F))
+	{
+		if(handle->maxAbsValue_A != 2)
+			lsm303agr_changeRange_A(handle, 2);
+	}
+	else if(LSM303AGR_ACCINRANGE(handle, -3.9F, 3.9F))
+	{
+		if(handle->maxAbsValue_A != 4)
+			lsm303agr_changeRange_A(handle, 4);
+	}
+	else if(LSM303AGR_ACCINRANGE(handle, -7.9F, 7.9F))
+	{
+		if(handle->maxAbsValue_A != 8)
+			lsm303agr_changeRange_A(handle, 8);
+	}
+	else
+	{
+		if(handle->maxAbsValue_A != 16)
+			lsm303agr_changeRange_A(handle, 16);
+	}
 }
 
 
@@ -148,12 +262,12 @@ HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2
 	handle->maxAbsValue_A=2;
 	lsm303agr_getMultiplicator(handle);
 	//write setup registers
-	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG3_A, 0x10, 1);
-	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG1_A, 0x77, 1);
-	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG4_A, 0x08, 1);
-	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_A_M, 0x81, 1);
-	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_B_M, 0x01, 1);
-	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_C_M, 0x01, 1);
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG3_A, DEFAULT_CTRL_REG3_A, 1);
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG1_A, DEFAULT_CTRL_REG1_A, 1);
+	status = lsm303agr_writeRegister(handle, ACCELEROMETER, CTRL_REG4_A, DEFAULT_CTRL_REG4_A, 1);
+	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_A_M, DEFAULT_CFG_REG_A_M, 1);
+	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_B_M, DEFAULT_CFG_REG_B_M, 1);
+	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_C_M, DEFAULT_CFG_REG_C_M, 1);
 	handle->currentTask = NONE;
 	for(int i = 0; i < 3; i++)
 		handle->nextTask[i] = NONE;
@@ -202,6 +316,7 @@ void lsm303agr_calcSensorData_A(lsm303agr *handle)
 	handle->x_A=raw[0]*handle->multiplicator_A;
 	handle->y_A=raw[1]*handle->multiplicator_A;
 	handle->z_A=raw[2]*handle->multiplicator_A;
+	lsm303agr_adjustRange_A(handle);
 }
 
 /* function:		lsm303agr_readSensorData_M
@@ -278,6 +393,8 @@ void lsm303agr_calcSensorData_M(lsm303agr *handle)
  */
 void lsm303agr_startNextTask(lsm303agr *handle)
 {
+	if(handle->nextTask[0] == NONE)
+		return;
 	lsm303agr_sensorTask nextTask = handle->nextTask[0];
 	for(int i = 0; i < LSM303AGR_TASKQUEUESIZE-1; i++)
 		handle->nextTask[i] = handle->nextTask[i+1];
@@ -298,6 +415,26 @@ void lsm303agr_startNextTask(lsm303agr *handle)
 		case SetSingleMode:
 		{
 			lsm303agr_setSingleMode_M(handle);
+			break;
+		}
+		case ChangeAccRange2g:
+		{
+			lsm303agr_changeRange_A(handle, 2);
+			break;
+		}
+		case ChangeAccRange4g:
+		{
+			lsm303agr_changeRange_A(handle, 4);
+			break;
+		}
+		case ChangeAccRange8g:
+		{
+			lsm303agr_changeRange_A(handle, 8);
+			break;
+		}
+		case ChangeAccRange16g:
+		{
+			lsm303agr_changeRange_A(handle, 16);
 			break;
 		}
 		default:

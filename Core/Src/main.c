@@ -222,6 +222,11 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 				heCompass.currentTask = NONE;
 				break;
 			}
+			case ChangeAccRange:
+			{
+				heCompass.currentTask = NONE;
+				break;
+			}
 			default:
 			{
 				heCompass.currentTask = NONE;

@@ -14,10 +14,15 @@ extern "C" {
 
 #include "stm32f3xx_hal.h"
 
-#define LSM303AGR_READY(handle) (handle->currentTask==NONE \
-	&& handle->hi2c->State == HAL_I2C_STATE_READY \
-	&& handle->hdma_tx->State == HAL_DMA_STATE_READY \
-	&& handle->hdma_rx->State == HAL_DMA_STATE_READY)
+#define LSM303AGR_READY(phandle)  (phandle->currentTask==NONE \
+		&& phandle->hi2c->State == HAL_I2C_STATE_READY \
+		&& phandle->hdma_tx->State == HAL_DMA_STATE_READY \
+		&& phandle->hdma_rx->State == HAL_DMA_STATE_READY)
+#define INRANGE(value, minValue, maxValue) (value <= maxValue \
+		&& value >= minValue)
+#define LSM303AGR_ACCINRANGE(phandle, minValue, maxValue) (INRANGE(phandle->x_A, minValue, maxValue) \
+		&& INRANGE(phandle->y_A, minValue, maxValue) \
+		&& INRANGE(phandle->z_A, minValue, maxValue)) \
 
 //sensor I2C addresses
 #define	ACCELEROMETER 		0x19
@@ -88,6 +93,13 @@ extern "C" {
 #define OUTZ_L_REG_M		0x6C
 #define OUTZ_H_REG_M		0x6D
 
+#define DEFAULT_CTRL_REG1_A 	0x77
+#define DEFAULT_CTRL_REG3_A 	0x10
+#define DEFAULT_CTRL_REG4_A 	0x08
+#define DEFAULT_CFG_REG_A_M 	0x81
+#define DEFAULT_CFG_REG_B_M 	0x01
+#define DEFAULT_CFG_REG_C_M 	0x01
+
 #define LSM303AGR_TASKQUEUESIZE 3
 
 typedef enum lsm303agr_sensorTask_
@@ -96,7 +108,12 @@ typedef enum lsm303agr_sensorTask_
 	GetAcceleration = 0x10,
 	GetMagneticFieldStrength = 0x11,
 	Config_lsm303agr = 0x20,
-	SetSingleMode = 0x21
+	SetSingleMode = 0x21,
+	ChangeAccRange = 0x30,
+	ChangeAccRange2g = 0x31,
+	ChangeAccRange4g = 0x32,
+	ChangeAccRange8g = 0x33,
+	ChangeAccRange16g = 0x34
 }lsm303agr_sensorTask;
 
 //lsm303agr sensor handle
