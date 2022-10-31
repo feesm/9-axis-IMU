@@ -98,7 +98,10 @@ static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,
 {
 	//check sensor state
 	if(handle->status!=FINISH)
+	{
+		//HAL_GPIO_WritePin(((GPIO_TypeDef *) ((0x40000000UL + 0x08000000UL) + 0x00001000UL)),((uint16_t)0x0100U),1);
 		return HAL_BUSY;
+	}
 
 	handle->status=TRANSMITTING;
 	//setup SPI registers
@@ -142,8 +145,8 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
 	handle->next = FINISH;
 
 	//write setup-registers
-	uint8_t rxBuf = 0x00;
-	status = i3g4250d_readRegister(handle,CTRL_REG4,&rxBuf,1);
+	uint8_t ctrl_reg4 = 0x00;
+	status = i3g4250d_readRegister(handle,CTRL_REG4,&ctrl_reg4,1);
 	if(status != HAL_OK)
 		return status;
 	status = i3g4250d_writeRegister(handle,CTRL_REG1,0xFF);
@@ -154,7 +157,7 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
 		return status;
 
 	//get measurement range
-	switch((rxBuf&0x30)>>4)
+	switch((ctrl_reg4&0x30)>>4)
 	{
 		case 0x00:
 		{
@@ -295,23 +298,21 @@ HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 		return HAL_BUSY;
 	}
 	//check if all values are included in the smallest sensor range
-	if(handle->x<245	&&	handle->y<245	&&	handle->z<245)
+	if(I3G4250D_INRANGE(handle,-245.0F,245.0F))
 	{
 		if(handle->measureMode!=245)
 		{
 			//change range to 245
-			handle->status=TRANSMITTING;
 			handle->measureMode=245;
 			return i3g4250d_writeRegisterDMA(handle,CTRL_REG4,(handle->ctrl_reg4 |= 0x00));
 		}
 	}
 	//check if all values are included in the medium sensor range
-	else if(handle->x<500	&&	handle->y<500	&&	handle->z<500)
+	else if(I3G4250D_INRANGE(handle, -500.0F, 500.0F))
 	{
 		if(handle->measureMode!=500)
 		{
 			//change range to 500
-			handle->status=TRANSMITTING;
 			handle->measureMode=500;
 			return i3g4250d_writeRegisterDMA(handle,CTRL_REG4,(handle->ctrl_reg4 |= 0x10));
 		}
@@ -322,7 +323,6 @@ HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
 		if(handle->measureMode!=2000)
 		{
 			//change range to 2000
-			handle->status=TRANSMITTING;
 			handle->measureMode=2000;
 			return i3g4250d_writeRegisterDMA(handle,CTRL_REG4,(handle->ctrl_reg4 |= 0x20));
 		}

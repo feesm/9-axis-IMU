@@ -15,6 +15,14 @@ extern "C" {
 //includes
 #include "stm32f3xx_hal.h"
 
+#ifndef INRANGE
+#define INRANGE(value, minValue, maxValue) (value <= maxValue \
+		&& value >= minValue)
+#endif
+#define I3G4250D_INRANGE(phandle, minValue, maxValue) (INRANGE(phandle->x, minValue, maxValue) \
+		&& INRANGE(phandle->y, minValue, maxValue) \
+		&& INRANGE(phandle->z, minValue, maxValue)) \
+
 //Read-only Registers
 
 #define WHO_AM_I		0x0F

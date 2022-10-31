@@ -18,8 +18,10 @@ extern "C" {
 		&& phandle->hi2c->State == HAL_I2C_STATE_READY \
 		&& phandle->hdma_tx->State == HAL_DMA_STATE_READY \
 		&& phandle->hdma_rx->State == HAL_DMA_STATE_READY)
+#ifndef INRANGE
 #define INRANGE(value, minValue, maxValue) (value <= maxValue \
 		&& value >= minValue)
+#endif
 #define LSM303AGR_ACCINRANGE(phandle, minValue, maxValue) (INRANGE(phandle->x_A, minValue, maxValue) \
 		&& INRANGE(phandle->y_A, minValue, maxValue) \
 		&& INRANGE(phandle->z_A, minValue, maxValue)) \
