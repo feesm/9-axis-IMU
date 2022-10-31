@@ -52,10 +52,10 @@ DMA_HandleTypeDef hdma_spi1_tx;
 TIM_HandleTypeDef htim16;
 TIM_HandleTypeDef htim17;
 
-i3g4250d 		  hgyro1;
-
 /* USER CODE BEGIN PV */
-
+i3g4250d hgyro1;
+lsm303agr heCompass;
+int outputMode = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,6 +78,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		case Blue_Push_Button_Pin:	//blue button is pressed
 		{
+			//DEBUG: change which sensor value is send via USB
+			if(outputMode != 2)
+				++outputMode;
+			else
+				outputMode = 0;
 			break;
 		}
 		case DRDY_INT2_Pin:	//i3g4250d has new data available
@@ -86,8 +91,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			i3g4250d_readSensorData(&hgyro1);
 			break;
 		}
-		case MEMS_INT_INT3_Pin:	//lsm303agr has new data available
+		case MEMS_INT_INT3_Pin:	//lsm303agr has new acceleration data available
 		{
+			lsm303agr_readSensorData_A(&heCompass);
+			break;
+		}
+		case DRDY_Pin:	//lsm303agr has new magnetic data available
+		{
+			lsm303agr_readSensorData_M(&heCompass);
 			break;
 		}
 	}
@@ -95,21 +106,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 //Time interrupts
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  // Check which version of the timer triggered this callback
-  if (htim == &htim16 )//1Hz
-  {
-	  //read temperature register
-	  i3g4250d_readTemperature(&hgyro1);
-  }
-  else if (htim == &htim17 )//50Hz
-  {
-	  i3g4250d_checkBlockedTask(&hgyro1);
-	  if(HAL_GPIO_ReadPin(GPIOE,DRDY_INT2_Pin))
-	  {
-		  //read data register manually to avoid a failure
-		  i3g4250d_readSensorData(&hgyro1);
-	  }
-  }
+	// Check which version of the timer triggered this callback
+	if (htim == &htim16 )//1Hz
+	{
+		//read temperature register
+		i3g4250d_readTemperature(&hgyro1);
+	}
+	else if (htim == &htim17 )//50Hz
+	{
+		//DEBUG: send sensor values via USB
+		char tempChar[40];
+		for(int i=0; i<40; i++)
+			tempChar[i] = 0;
+		if(outputMode == 0)
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",hgyro1.x,hgyro1.y,hgyro1.z);
+		else if(outputMode == 1)
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_A,heCompass.y_A,heCompass.z_A);
+		else
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_M,heCompass.y_M,heCompass.z_M);
+		CDC_Transmit_FS((uint8_t*)&tempChar[0],40);
+
+		i3g4250d_checkBlockedTask(&hgyro1);
+	}
 }
 //SPI DMA finished receiving and transmitting data
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
@@ -127,10 +145,6 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 			i3g4250d_calcSensorData(&hgyro1);
 			//adjust sensor range
 			i3g4250d_adjustRange(&hgyro1);
-			//sent data via USB(debugging only)
-			char a[80]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-			sprintf(&a[0],"X: %f\tY: %f\tZ: %f\tT: %d\n",hgyro1.x,hgyro1.y,hgyro1.z,hgyro1.temperature);
-			CDC_Transmit_FS(&a[0],70);
 		}
 		else if(hgyro1.status==READTEMPERATURE) //new raw temperature data available
 		{
@@ -165,6 +179,62 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
 	HAL_GPIO_WritePin(GPIOE,LD4_Pin,GPIO_PIN_SET);
+}
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	if(hi2c == heCompass.hi2c)
+	{
+		switch(heCompass.currentTask)
+		{
+			case GetAcceleration:
+			{
+				lsm303agr_calcSensorData_A(&heCompass);
+				heCompass.currentTask = NONE;
+				break;
+			}
+			case GetMagneticFieldStrength:
+			{
+				lsm303agr_calcSensorData_M(&heCompass);
+				heCompass.currentTask = NONE;
+				break;
+			}
+			default:
+			{
+				heCompass.currentTask = NONE;
+				break;
+
+			}
+		}
+		lsm303agr_startNextTask(&heCompass);
+	}
+
+
+
+}
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+	if(hi2c == heCompass.hi2c)
+	{
+		switch(heCompass.currentTask)
+		{
+			case SetSingleMode:
+			{
+				heCompass.currentTask = NONE;
+				break;
+			}
+			case ChangeAccRange:
+			{
+				heCompass.currentTask = NONE;
+				break;
+			}
+			default:
+			{
+				heCompass.currentTask = NONE;
+				break;
+			}
+		}
+		lsm303agr_startNextTask(&heCompass);
+	}
 }
 
 
@@ -210,6 +280,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim17);
   //configure sensor
   i3g4250d_config(&hgyro1,&hspi1,CS_I2C_SPI_Pin,GPIOE,&hdma_spi1_rx,&hdma_spi1_tx);
+  lsm303agr_config(&heCompass, &hi2c1, &hdma_i2c1_rx, &hdma_i2c1_tx);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -285,7 +356,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00000001;
+  hi2c1.Init.Timing = 0x0000020B;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -311,10 +382,6 @@ static void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
-
-  /** I2C Fast mode Plus enable
-  */
-  __HAL_SYSCFG_FASTMODEPLUS_ENABLE(I2C_FASTMODEPLUS_I2C1);
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
@@ -473,9 +540,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, LD4_Pin|LD3_Pin|LD5_Pin|LD7_Pin
                           |LD9_Pin|LD10_Pin|LD8_Pin|LD6_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : DRDY_Pin MEMS_INT4_Pin */
-  GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  /*Configure GPIO pins : DRDY_Pin DRDY_INT2_Pin */
+  GPIO_InitStruct.Pin = DRDY_Pin|DRDY_INT2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
@@ -496,17 +563,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(MEMS_INT_INT3_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : MEMS_INT4_Pin */
+  GPIO_InitStruct.Pin = MEMS_INT4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(MEMS_INT4_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : Blue_Push_Button_Pin */
   GPIO_InitStruct.Pin = Blue_Push_Button_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Blue_Push_Button_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : DRDY_INT2_Pin */
-  GPIO_InitStruct.Pin = DRDY_INT2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DRDY_INT2_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
@@ -514,6 +581,9 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
