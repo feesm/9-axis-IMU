@@ -14,6 +14,11 @@ extern "C" {
 
 #include "stm32f3xx_hal.h"
 
+#define LSM303AGR_READY(handle) (handle->currentTask==NONE \
+	&& handle->hi2c->State == HAL_I2C_STATE_READY \
+	&& handle->hdma_tx->State == HAL_DMA_STATE_READY \
+	&& handle->hdma_rx->State == HAL_DMA_STATE_READY)
+
 //sensor I2C addresses
 #define	ACCELEROMETER 		0x19
 #define MAGNETICSENSOR  	0x1E
@@ -83,6 +88,17 @@ extern "C" {
 #define OUTZ_L_REG_M		0x6C
 #define OUTZ_H_REG_M		0x6D
 
+#define LSM303AGR_TASKQUEUESIZE 3
+
+typedef enum lsm303agr_sensorTask_
+{
+	NONE=0x00,
+	GetAcceleration = 0x10,
+	GetMagneticFieldStrength = 0x11,
+	Config_lsm303agr = 0x20,
+	SetSingleMode = 0x21
+}lsm303agr_sensorTask;
+
 //lsm303agr sensor handle
 
 typedef struct lsm303agr_
@@ -101,6 +117,8 @@ typedef struct lsm303agr_
 	uint8_t precision_A;
 	float multiplicator_A;
 	uint8_t maxAbsValue_A;
+	lsm303agr_sensorTask currentTask;
+	lsm303agr_sensorTask nextTask[LSM303AGR_TASKQUEUESIZE];
 }lsm303agr;
 
 
@@ -113,6 +131,7 @@ void lsm303agr_calcSensorData_A(lsm303agr *handle);
 HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle);
 HAL_StatusTypeDef lsm303agr_setSingleMode_M(lsm303agr *handle);
 void lsm303agr_calcSensorData_M(lsm303agr *handle);
+void lsm303agr_startNextTask(lsm303agr *handle);
 
 
 #ifdef __cplusplus
