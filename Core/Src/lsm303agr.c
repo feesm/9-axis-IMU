@@ -216,7 +216,6 @@ HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle)
 {
 	if(!LSM303AGR_READY(handle))
 	{
-		HAL_GPIO_WritePin(((GPIO_TypeDef *) ((0x40000000UL + 0x08000000UL) + 0x00001000UL)),((uint16_t)0x4000U),1);
 		if(lsm303agr_addToTaskQueue(handle, GetMagneticFieldStrength) == SUCCESS)
 			return HAL_BUSY;
 		else
