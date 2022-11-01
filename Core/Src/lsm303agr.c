@@ -115,7 +115,7 @@ static void lsm303agr_getMultiplicator(lsm303agr *handle)
 static uint8_t lsm303agr_addToTaskQueue(lsm303agr *handle, lsm303agr_sensorTask task)
 {
 	for(int i = 0; i < LSM303AGR_TASKQUEUESIZE; i++)
-		if(handle->nextTask[i] == NONE)
+		if(handle->nextTask[i] == lsm303agr_NONE)
 		{
 			handle->nextTask[i] = task;
 			return SUCCESS;
@@ -140,22 +140,22 @@ static HAL_StatusTypeDef lsm303agr_changeRange_A(lsm303agr *handle, uint8_t rang
 		{
 			case 2:
 			{
-				task = ChangeAccRange2g;
+				task = lsm303agr_ChangeAccRange2g;
 				break;
 			}
 			case 4:
 			{
-				task = ChangeAccRange4g;
+				task = lsm303agr_ChangeAccRange4g;
 				break;
 			}
 			case 8:
 			{
-				task = ChangeAccRange8g;
+				task = lsm303agr_ChangeAccRange8g;
 				break;
 			}
 			case 16:
 			{
-				task = ChangeAccRange16g;
+				task = lsm303agr_ChangeAccRange16g;
 				break;
 			}
 			default:
@@ -168,7 +168,7 @@ static HAL_StatusTypeDef lsm303agr_changeRange_A(lsm303agr *handle, uint8_t rang
 		else
 			return HAL_ERROR;
 	}
-	handle->currentTask = ChangeAccRange;
+	handle->currentTask = lsm303agr_ChangeAccRange;
 	uint8_t fs = 0x00;
 	switch(range)
 	{
@@ -252,7 +252,7 @@ static void lsm303agr_adjustRange_A(lsm303agr *handle)
  */
 HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2c, DMA_HandleTypeDef *I2C_hdma_rx, DMA_HandleTypeDef *I2C_hdma_tx)
 {
-	handle->currentTask = Config_lsm303agr;
+	handle->currentTask = lsm303agr_Config;
 	HAL_StatusTypeDef status = HAL_OK;
 	//setup sensor related variables
 	handle->hi2c = I2C_hi2c;
@@ -268,9 +268,9 @@ HAL_StatusTypeDef lsm303agr_config(lsm303agr *handle, I2C_HandleTypeDef *I2C_hi2
 	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_A_M, DEFAULT_CFG_REG_A_M, 1);
 	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_B_M, DEFAULT_CFG_REG_B_M, 1);
 	status = lsm303agr_writeRegister(handle, MAGNETICSENSOR, CFG_REG_C_M, DEFAULT_CFG_REG_C_M, 1);
-	handle->currentTask = NONE;
+	handle->currentTask = lsm303agr_NONE;
 	for(int i = 0; i < 3; i++)
-		handle->nextTask[i] = NONE;
+		handle->nextTask[i] = lsm303agr_NONE;
 	return status;
 }
 
@@ -286,12 +286,12 @@ HAL_StatusTypeDef lsm303agr_readSensorData_A(lsm303agr *handle)
 {
 	if(!LSM303AGR_READY(handle))
 	{
-		if(lsm303agr_addToTaskQueue(handle, GetAcceleration) == SUCCESS)
+		if(lsm303agr_addToTaskQueue(handle, lsm303agr_GetAcceleration) == SUCCESS)
 			return HAL_BUSY;
 		else
 			return HAL_ERROR;
 	}
-	handle->currentTask = GetAcceleration;
+	handle->currentTask = lsm303agr_GetAcceleration;
 	handle->txBuf[0]=OUT_X_L_A | 0x80;
 	return HAL_I2C_Mem_Read_DMA(handle->hi2c,ACCELEROMETER<<1,handle->txBuf[0],1,&handle->rxBuf[0],6);
 }
@@ -331,14 +331,14 @@ HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle)
 {
 	if(!LSM303AGR_READY(handle))
 	{
-		if(lsm303agr_addToTaskQueue(handle, GetMagneticFieldStrength) == SUCCESS)
+		if(lsm303agr_addToTaskQueue(handle, lsm303agr_GetMagneticFieldStrength) == SUCCESS)
 			return HAL_BUSY;
 		else
 			return HAL_ERROR;
 	}
-	handle->currentTask = GetMagneticFieldStrength;
+	handle->currentTask = lsm303agr_GetMagneticFieldStrength;
 	handle->txBuf[0]=OUTX_L_REG_M | 0x80;
-	lsm303agr_addToTaskQueue(handle, SetSingleMode);
+	lsm303agr_addToTaskQueue(handle, lsm303agr_SetSingleMode);
 	return HAL_I2C_Mem_Read_DMA(handle->hi2c,MAGNETICSENSOR<<1,handle->txBuf[0],1,&handle->rxBuf[0],6);
 }
 
@@ -354,12 +354,12 @@ HAL_StatusTypeDef lsm303agr_setSingleMode_M(lsm303agr *handle)
 {
 	if(!LSM303AGR_READY(handle))
 	{
-		if(lsm303agr_addToTaskQueue(handle, SetSingleMode) == SUCCESS)
+		if(lsm303agr_addToTaskQueue(handle, lsm303agr_SetSingleMode) == SUCCESS)
 			return HAL_BUSY;
 		else
 			return HAL_ERROR;
 	}
-	handle->currentTask = SetSingleMode;
+	handle->currentTask = lsm303agr_SetSingleMode;
 	handle->txBuf[0] = CFG_REG_A_M;
 	handle->txBuf[1] = 0x81;
 	return HAL_I2C_Master_Transmit_DMA(handle->hi2c,MAGNETICSENSOR<<1,&handle->txBuf[0],2);
@@ -393,46 +393,46 @@ void lsm303agr_calcSensorData_M(lsm303agr *handle)
  */
 void lsm303agr_startNextTask(lsm303agr *handle)
 {
-	if(handle->nextTask[0] == NONE)
+	if(handle->nextTask[0] == lsm303agr_NONE)
 		return;
 	lsm303agr_sensorTask nextTask = handle->nextTask[0];
 	for(int i = 0; i < LSM303AGR_TASKQUEUESIZE-1; i++)
 		handle->nextTask[i] = handle->nextTask[i+1];
-	handle->nextTask[LSM303AGR_TASKQUEUESIZE - 1] = NONE;
+	handle->nextTask[LSM303AGR_TASKQUEUESIZE - 1] = lsm303agr_NONE;
 	switch(nextTask)
 	{
-		case GetAcceleration:
+		case lsm303agr_GetAcceleration:
 		{
 			lsm303agr_readSensorData_A(handle);
 			break;
 		}
-		case GetMagneticFieldStrength:
+		case lsm303agr_GetMagneticFieldStrength:
 		{
 
 			lsm303agr_readSensorData_M(handle);
 			break;
 		}
-		case SetSingleMode:
+		case lsm303agr_SetSingleMode:
 		{
 			lsm303agr_setSingleMode_M(handle);
 			break;
 		}
-		case ChangeAccRange2g:
+		case lsm303agr_ChangeAccRange2g:
 		{
 			lsm303agr_changeRange_A(handle, 2);
 			break;
 		}
-		case ChangeAccRange4g:
+		case lsm303agr_ChangeAccRange4g:
 		{
 			lsm303agr_changeRange_A(handle, 4);
 			break;
 		}
-		case ChangeAccRange8g:
+		case lsm303agr_ChangeAccRange8g:
 		{
 			lsm303agr_changeRange_A(handle, 8);
 			break;
 		}
-		case ChangeAccRange16g:
+		case lsm303agr_ChangeAccRange16g:
 		{
 			lsm303agr_changeRange_A(handle, 16);
 			break;

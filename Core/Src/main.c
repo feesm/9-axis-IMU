@@ -126,7 +126,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_M,heCompass.y_M,heCompass.z_M);
 		CDC_Transmit_FS((uint8_t*)&tempChar[0],40);
 
-		i3g4250d_checkBlockedTask(&hgyro1);
 	}
 }
 //SPI DMA finished receiving and transmitting data
@@ -137,25 +136,23 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		//finish SPI communication
 		HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
 
-		if(hgyro1.status==READSENSORDATA)	//new raw sensor data available
+		if(hgyro1.currentTask==i3g4250d_GETANGULARRATE)	//new raw sensor data available
 		{
 			//reset SPI state
-			hgyro1.status=FINISH;
+			hgyro1.currentTask=i3g4250d_NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
-			//adjust sensor range
-			i3g4250d_adjustRange(&hgyro1);
 		}
-		else if(hgyro1.status==READTEMPERATURE) //new raw temperature data available
+		else if(hgyro1.currentTask==i3g4250d_GETTEMPERATURE) //new raw temperature data available
 		{
 			//calculate temperature data
 			i3g4250d_calcTemperature(&hgyro1);
 		}
 		else
 		{
-			hgyro1.status=FINISH;
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
-		i3g4250d_checkBlockedTask(&hgyro1);
+		i3g4250d_startNextTask(&hgyro1);
 	}
 }
 //SPI DMA finished transmitting data
@@ -163,17 +160,23 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if(hspi==&hspi1)	//finished transmitting data from i3g4250d
 	{
-		if(hgyro1.status==TRANSMITTING)
+		if(hgyro1.currentTask==i3g4250d_TRANSMITTING)
 		{
 			//finish SPI communication
 			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
-			hgyro1.status=FINISH;
+			hgyro1.currentTask=i3g4250d_NONE;
+		}
+		else if(hgyro1.currentTask == i3g4250d_CHANGEANGRANGE)
+		{
+			//finish SPI communication
+			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
 		else
 		{
-			hgyro1.status=FINISH;
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
-		i3g4250d_checkBlockedTask(&hgyro1);
+		i3g4250d_startNextTask(&hgyro1);
 	}
 }
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
@@ -186,21 +189,21 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	{
 		switch(heCompass.currentTask)
 		{
-			case GetAcceleration:
+			case lsm303agr_GetAcceleration:
 			{
 				lsm303agr_calcSensorData_A(&heCompass);
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
-			case GetMagneticFieldStrength:
+			case lsm303agr_GetMagneticFieldStrength:
 			{
 				lsm303agr_calcSensorData_M(&heCompass);
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 			default:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 
 			}
@@ -217,19 +220,19 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 	{
 		switch(heCompass.currentTask)
 		{
-			case SetSingleMode:
+			case lsm303agr_SetSingleMode:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
-			case ChangeAccRange:
+			case lsm303agr_ChangeAccRange:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 			default:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 		}

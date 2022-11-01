@@ -12,23 +12,32 @@
 extern "C" {
 #endif
 
+/*lsm303agr includes----------------------------------------------------------------------------------------*/
+
 #include "stm32f3xx_hal.h"
 
-#define LSM303AGR_READY(phandle)  (phandle->currentTask==NONE \
+/*lsm303agr macros------------------------------------------------------------------------------------------*/
+
+#define LSM303AGR_READY(phandle)  (phandle->currentTask==lsm303agr_NONE \
 		&& phandle->hi2c->State == HAL_I2C_STATE_READY \
 		&& phandle->hdma_tx->State == HAL_DMA_STATE_READY \
 		&& phandle->hdma_rx->State == HAL_DMA_STATE_READY)
+#ifndef INRANGE
 #define INRANGE(value, minValue, maxValue) (value <= maxValue \
 		&& value >= minValue)
+#endif
 #define LSM303AGR_ACCINRANGE(phandle, minValue, maxValue) (INRANGE(phandle->x_A, minValue, maxValue) \
 		&& INRANGE(phandle->y_A, minValue, maxValue) \
 		&& INRANGE(phandle->z_A, minValue, maxValue)) \
 
-//sensor I2C addresses
+/*lsm303agr I2C addresses-----------------------------------------------------------------------------------*/
+
 #define	ACCELEROMETER 		0x19
 #define MAGNETICSENSOR  	0x1E
 
-//accelerometer registers
+/*lsm303agr registers---------------------------------------------------------------------------------------*/
+
+/*accelerometer registers*/
 
 #define STATUS_REG_AUX_A	0x07
 #define OUT_TEMP_L_A		0x0C
@@ -69,7 +78,7 @@ extern "C" {
 #define Act_THS_A		0x3E
 #define Act_DUR_A		0x3F
 
-//magnetic sensor registers
+/*magnetic sensor registers*/
 
 #define OFFSET_X_REG_L_M	0x45
 #define OFFSET_X_REG_H_M	0x46
@@ -93,6 +102,8 @@ extern "C" {
 #define OUTZ_L_REG_M		0x6C
 #define OUTZ_H_REG_M		0x6D
 
+/*lsm303agr constants---------------------------------------------------------------------------------------*/
+
 #define DEFAULT_CTRL_REG1_A 	0x77
 #define DEFAULT_CTRL_REG3_A 	0x10
 #define DEFAULT_CTRL_REG4_A 	0x08
@@ -102,23 +113,25 @@ extern "C" {
 
 #define LSM303AGR_TASKQUEUESIZE 3
 
-typedef enum lsm303agr_sensorTask_
+/*lsm303agr typedefs----------------------------------------------------------------------------------------*/
+
+typedef enum _lsm303agr_sensorTask
 {
-	NONE=0x00,
-	GetAcceleration = 0x10,
-	GetMagneticFieldStrength = 0x11,
-	Config_lsm303agr = 0x20,
-	SetSingleMode = 0x21,
-	ChangeAccRange = 0x30,
-	ChangeAccRange2g = 0x31,
-	ChangeAccRange4g = 0x32,
-	ChangeAccRange8g = 0x33,
-	ChangeAccRange16g = 0x34
+	lsm303agr_NONE=0x00,
+	lsm303agr_GetAcceleration = 0x10,
+	lsm303agr_GetMagneticFieldStrength = 0x11,
+	lsm303agr_Config = 0x20,
+	lsm303agr_SetSingleMode = 0x21,
+	lsm303agr_ChangeAccRange = 0x30,
+	lsm303agr_ChangeAccRange2g = 0x31,
+	lsm303agr_ChangeAccRange4g = 0x32,
+	lsm303agr_ChangeAccRange8g = 0x33,
+	lsm303agr_ChangeAccRange16g = 0x34
 }lsm303agr_sensorTask;
 
-//lsm303agr sensor handle
+/*lsm303agr sensor handle*/
 
-typedef struct lsm303agr_
+typedef struct _lsm303agr
 {
 	float x_A;
 	float y_A;
