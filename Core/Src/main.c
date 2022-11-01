@@ -143,8 +143,6 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 			hgyro1.currentTask=NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
-			//adjust sensor range
-			i3g4250d_adjustRange(&hgyro1);
 		}
 		else if(hgyro1.currentTask==i3g4250d_GETTEMPERATURE) //new raw temperature data available
 		{
@@ -164,6 +162,12 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 	if(hspi==&hspi1)	//finished transmitting data from i3g4250d
 	{
 		if(hgyro1.currentTask==i3g4250d_TRANSMITTING)
+		{
+			//finish SPI communication
+			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
+			hgyro1.currentTask=NONE;
+		}
+		else if(hgyro1.currentTask == i3g4250d_CHANGEANGRANGE)
 		{
 			//finish SPI communication
 			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);

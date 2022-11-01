@@ -12,6 +12,8 @@ static HAL_StatusTypeDef i3g4250d_readRegister(i3g4250d *handle, uint8_t reg, ui
 static HAL_StatusTypeDef i3g4250d_writeRegister(i3g4250d *handle,uint8_t reg,uint8_t txBuf);
 static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,uint8_t txBuf);
 static uint8_t i3g4250d_addToTaskQueue(i3g4250d *handle, i3g4250d_sensorTask task);
+static HAL_StatusTypeDef i3g4250d_changeRange(i3g4250d *handle, uint16_t range);
+static void i3g4250d_adjustRange(i3g4250d *handle);
 
 /*private function definitions-------------------------------------------------------------------------------*/
 
@@ -100,7 +102,6 @@ static HAL_StatusTypeDef i3g4250d_writeRegisterDMA(i3g4250d *handle,uint8_t reg,
 	//check sensor state
 	if(handle->currentTask!=i3g4250d_NONE)
 	{
-		//HAL_GPIO_WritePin(((GPIO_TypeDef *) ((0x40000000UL + 0x08000000UL) + 0x00001000UL)),((uint16_t)0x0100U),1);
 		return HAL_BUSY;
 	}
 
@@ -130,6 +131,109 @@ static uint8_t i3g4250d_addToTaskQueue(i3g4250d *handle, i3g4250d_sensorTask tas
 			return SUCCESS;
 		}
 	return ERROR;
+}
+
+/* function:		i3g4250d_changeRange
+ * description:		change i3g4250d full-scale
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ * range:		new sensor angular rate range
+ ***************************************************************
+ * returns:		state of transfer
+ */
+static HAL_StatusTypeDef i3g4250d_changeRange(i3g4250d *handle, uint16_t range)
+{
+	if(!I3G4250D_READY(handle))
+	{
+		i3g4250d_sensorTask task = i3g4250d_NONE;
+		switch(range)
+		{
+			case 245:
+			{
+				task = i3g4250d_CHANGEANGRANGE245DPS;
+				break;
+			}
+			case 500:
+			{
+				task = i3g4250d_CHANGEANGRANGE500DPS;
+				break;
+			}
+			case 2000:
+			{
+				task = i3g4250d_CHANGEANGRANGE2000DPS;
+				break;
+			}
+			default:
+			{
+				return HAL_ERROR;
+			}
+		}
+		i3g4250d_addToTaskQueue(handle, task);
+		return HAL_BUSY;
+	}
+	i3g4250d_addToTaskQueue(handle, i3g4250d_CHANGEANGRANGE);
+	uint8_t fs = 0x00;
+	switch(range)
+	{
+		case 245:
+		{
+			fs = 0x00;
+			break;
+		}
+		case 500:
+		{
+			fs = 0x01;
+			break;
+		}
+		case 2000:
+		{
+			fs = 0x02;
+			break;
+		}
+		default:
+		{
+			return HAL_ERROR;
+		}
+	}
+	handle->txBuf[0] = CTRL_REG4;
+	handle->txBuf[1] = handle->ctrl_reg4 | (fs<<4);
+	handle->measureMode = range;
+	return HAL_SPI_Transmit_DMA(handle->hspi, handle->txBuf, 2);
+}
+
+/* function:		i3g4250d_adjustRange
+ * description:		adjusts the sensor range to the smallest value where all sensor values are included
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ ***************************************************************
+ * returns:		-
+ */
+static void i3g4250d_adjustRange(i3g4250d *handle)
+{
+	//check if all values are included in the smallest sensor range
+	if(I3G4250D_INRANGE(handle,-245.0F,245.0F))
+	{
+		if(handle->measureMode!=245)
+		{
+			i3g4250d_changeRange(handle, 245);
+		}
+	}
+	//check if all values are included in the medium sensor range
+	else if(I3G4250D_INRANGE(handle, -500.0F, 500.0F))
+	{
+		if(handle->measureMode!=500)
+		{
+			i3g4250d_changeRange(handle, 500);
+		}
+	}
+	//take the biggest sensor range
+	else
+	{
+		if(handle->measureMode!=2000)
+		{
+			i3g4250d_changeRange(handle, 2000);
+		}
+	}
 }
 
 /*public function definitions---------------------------------------------------------------------------------*/
@@ -235,9 +339,19 @@ void i3g4250d_checkBlockedTask(i3g4250d *handle)
 			i3g4250d_readTemperature(handle);
 			break;
 		}
-	case i3g4250d_CHANGEANGRANGE:
+	case i3g4250d_CHANGEANGRANGE245DPS:
 		{
-			i3g4250d_adjustRange(handle);
+			i3g4250d_changeRange(handle,245);
+			break;
+		}
+	case i3g4250d_CHANGEANGRANGE500DPS:
+		{
+			i3g4250d_changeRange(handle,500);
+			break;
+		}
+	case i3g4250d_CHANGEANGRANGE2000DPS:
+		{
+			i3g4250d_changeRange(handle,2000);
 			break;
 		}
 	default:
@@ -301,54 +415,7 @@ void i3g4250d_calcSensorData(i3g4250d *handle)
 	handle->y=raw[1]*fac;
 	handle->z=raw[2]*fac;
 	handle->currentTask=i3g4250d_NONE;
-}
-
-/* function:		i3g4250d_adjustRange
- * description:		adjusts the sensor range to the smallest value where all sensor values are included
- ***************************************************************
- * *handle:		pointer to sensor handle
- ***************************************************************
- * returns:		state of transfer
- */
-HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle)
-{
-	//check if SPI or DMA is busy
-	if(!I3G4250D_READY(handle))
-	{
-		i3g4250d_addToTaskQueue(handle, i3g4250d_CHANGEANGRANGE);;
-		return HAL_BUSY;
-	}
-	//check if all values are included in the smallest sensor range
-	if(I3G4250D_INRANGE(handle,-245.0F,245.0F))
-	{
-		if(handle->measureMode!=245)
-		{
-			//change range to 245
-			handle->measureMode=245;
-			return i3g4250d_writeRegisterDMA(handle,CTRL_REG4,(handle->ctrl_reg4 |= 0x00));
-		}
-	}
-	//check if all values are included in the medium sensor range
-	else if(I3G4250D_INRANGE(handle, -500.0F, 500.0F))
-	{
-		if(handle->measureMode!=500)
-		{
-			//change range to 500
-			handle->measureMode=500;
-			return i3g4250d_writeRegisterDMA(handle,CTRL_REG4,(handle->ctrl_reg4 |= 0x10));
-		}
-	}
-	//take the biggest sensor range
-	else
-	{
-		if(handle->measureMode!=2000)
-		{
-			//change range to 2000
-			handle->measureMode=2000;
-			return i3g4250d_writeRegisterDMA(handle,CTRL_REG4,(handle->ctrl_reg4 |= 0x20));
-		}
-	}
-	return HAL_OK;
+	i3g4250d_adjustRange(handle);
 }
 
 /* function:		i3g4250d_readTemperature

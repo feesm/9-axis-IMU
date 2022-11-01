@@ -103,7 +103,6 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
 void i3g4250d_checkBlockedTask(i3g4250d *handle);
 HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle);
 void i3g4250d_calcSensorData(i3g4250d *handle);
-HAL_StatusTypeDef i3g4250d_adjustRange(i3g4250d *handle);
 HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle);
 void i3g4250d_calcTemperature(i3g4250d *handle);
 
