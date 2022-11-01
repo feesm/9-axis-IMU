@@ -139,7 +139,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		if(hgyro1.currentTask==i3g4250d_GETANGULARRATE)	//new raw sensor data available
 		{
 			//reset SPI state
-			hgyro1.currentTask=NONE;
+			hgyro1.currentTask=i3g4250d_NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
 		}
@@ -150,7 +150,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		}
 		else
 		{
-			hgyro1.currentTask=NONE;
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
 		i3g4250d_startNextTask(&hgyro1);
 	}
@@ -164,17 +164,17 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 		{
 			//finish SPI communication
 			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
-			hgyro1.currentTask=NONE;
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
 		else if(hgyro1.currentTask == i3g4250d_CHANGEANGRANGE)
 		{
 			//finish SPI communication
 			HAL_GPIO_WritePin(GPIOE,hgyro1.cs_Pin,GPIO_PIN_SET);
-			hgyro1.currentTask=NONE;
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
 		else
 		{
-			hgyro1.currentTask=NONE;
+			hgyro1.currentTask=i3g4250d_NONE;
 		}
 		i3g4250d_startNextTask(&hgyro1);
 	}
