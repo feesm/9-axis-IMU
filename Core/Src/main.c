@@ -189,21 +189,21 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 	{
 		switch(heCompass.currentTask)
 		{
-			case GetAcceleration:
+			case lsm303agr_GetAcceleration:
 			{
 				lsm303agr_calcSensorData_A(&heCompass);
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
-			case GetMagneticFieldStrength:
+			case lsm303agr_GetMagneticFieldStrength:
 			{
 				lsm303agr_calcSensorData_M(&heCompass);
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 			default:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 
 			}
@@ -220,19 +220,19 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 	{
 		switch(heCompass.currentTask)
 		{
-			case SetSingleMode:
+			case lsm303agr_SetSingleMode:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
-			case ChangeAccRange:
+			case lsm303agr_ChangeAccRange:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 			default:
 			{
-				heCompass.currentTask = NONE;
+				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 		}
