@@ -12,8 +12,11 @@
 extern "C" {
 #endif
 
-//includes
+/*i3g4250d includes-----------------------------------------------------------------------------------*/
+
 #include "stm32f3xx_hal.h"
+
+/*i3g4250d macros-------------------------------------------------------------------------------------*/
 
 #define I3G4250D_READY(phandle)  (phandle->currentTask==i3g4250d_NONE \
 		&& phandle->hspi->State == HAL_SPI_STATE_READY \
@@ -27,9 +30,15 @@ extern "C" {
 		&& INRANGE(phandle->y, minValue, maxValue) \
 		&& INRANGE(phandle->z, minValue, maxValue)) \
 
-//Read-only Registers
+/*i3g4250d registers-----------------------------------------------------------------------------------*/
 
 #define WHO_AM_I		0x0F
+#define CTRL_REG1		0x20
+#define CTRL_REG2		0x21
+#define CTRL_REG3		0x22
+#define CTRL_REG4		0x23
+#define CTRL_REG5		0x24
+#define REFERENCE		0x25
 #define OUT_TEMP		0x26
 #define STATUS_REG		0x27
 #define OUT_X_L			0x28
@@ -38,19 +47,10 @@ extern "C" {
 #define OUT_Y_H			0x2B
 #define OUT_Z_L			0x2C
 #define OUT_Z_H			0x2D
-#define FIFO_SRC_REG		0x2F
-#define INT1_SRC		0x31
-
-//Read-Write Registers
-
-#define CTRL_REG1		0x20
-#define CTRL_REG2		0x21
-#define CTRL_REG3		0x22
-#define CTRL_REG4		0x23
-#define CTRL_REG5		0x24
-#define REFERENCE		0x25
 #define FIFO_CTRL_REG		0x2E
+#define FIFO_SRC_REG		0x2F
 #define INT1_CFG		0x30
+#define INT1_SRC		0x31
 #define INT1_THS_XH		0x32
 #define INT1_THS_XL		0x33
 #define INT1_THS_YH		0x34
@@ -59,10 +59,18 @@ extern "C" {
 #define INT1_THS_ZL		0x37
 #define INT1_DURATION		0x38
 
+/*i3g4250d constants-------------------------------------------------------------------------------------*/
+
 #define I3G4250D_TASKQUEUESIZE 3
 
+#define DEFAULT_CTRL_REG1 	0xFF
+#define DEFAULT_CTRL_REG2 	0x00
+#define DEFAULT_CTRL_REG3 	0x08
+#define DEFAULT_CTRL_REG4 	0x00
+#define DEFAULT_CTRL_REG5 	0x00
 
-//SPI state
+/*i3g4250d typedefs--------------------------------------------------------------------------------------*/
+
 typedef enum _i3g4250d_sensorTask
 {
 	i3g4250d_NONE = 0x00,
@@ -76,8 +84,8 @@ typedef enum _i3g4250d_sensorTask
 
 }i3g4250d_sensorTask;
 
-//i3g4250d sensor handle
-typedef struct _i3g4250d
+
+typedef struct _i3g4250d	//i3g4250d sensor handle
 {
 	SPI_HandleTypeDef	*hspi;
 	DMA_HandleTypeDef	*hdma_rx;
