@@ -14,7 +14,7 @@ extern "C" {
 
 #include "stm32f3xx_hal.h"
 
-#define LSM303AGR_READY(phandle)  (phandle->currentTask==NONE \
+#define LSM303AGR_READY(phandle)  (phandle->currentTask==lsm303agr_NONE \
 		&& phandle->hi2c->State == HAL_I2C_STATE_READY \
 		&& phandle->hdma_tx->State == HAL_DMA_STATE_READY \
 		&& phandle->hdma_rx->State == HAL_DMA_STATE_READY)
@@ -102,23 +102,23 @@ extern "C" {
 
 #define LSM303AGR_TASKQUEUESIZE 3
 
-typedef enum lsm303agr_sensorTask_
+typedef enum _lsm303agr_sensorTask
 {
-	NONE=0x00,
-	GetAcceleration = 0x10,
-	GetMagneticFieldStrength = 0x11,
-	Config_lsm303agr = 0x20,
-	SetSingleMode = 0x21,
-	ChangeAccRange = 0x30,
-	ChangeAccRange2g = 0x31,
-	ChangeAccRange4g = 0x32,
-	ChangeAccRange8g = 0x33,
-	ChangeAccRange16g = 0x34
+	lsm303agr_NONE=0x00,
+	lsm303agr_GetAcceleration = 0x10,
+	lsm303agr_GetMagneticFieldStrength = 0x11,
+	lsm303agr_Config = 0x20,
+	lsm303agr_SetSingleMode = 0x21,
+	lsm303agr_ChangeAccRange = 0x30,
+	lsm303agr_ChangeAccRange2g = 0x31,
+	lsm303agr_ChangeAccRange4g = 0x32,
+	lsm303agr_ChangeAccRange8g = 0x33,
+	lsm303agr_ChangeAccRange16g = 0x34
 }lsm303agr_sensorTask;
 
 //lsm303agr sensor handle
 
-typedef struct lsm303agr_
+typedef struct _lsm303agr
 {
 	float x_A;
 	float y_A;
