@@ -59,6 +59,9 @@ extern "C" {
 #define INT1_THS_ZL		0x37
 #define INT1_DURATION		0x38
 
+#define I3G4250D_TASKQUEUESIZE 3
+
+
 //SPI state
 typedef enum _i3g4250d_sensorTask
 {
@@ -90,7 +93,7 @@ typedef struct _i3g4250d
 	uint16_t		measureMode;
 	uint8_t			ctrl_reg4;
 	i3g4250d_sensorTask	currentTask;
-	i3g4250d_sensorTask	nextTask;
+	i3g4250d_sensorTask	nextTask[I3G4250D_TASKQUEUESIZE];
 }i3g4250d;
 
 
