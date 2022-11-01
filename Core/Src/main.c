@@ -126,7 +126,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_M,heCompass.y_M,heCompass.z_M);
 		CDC_Transmit_FS((uint8_t*)&tempChar[0],40);
 
-		i3g4250d_checkBlockedTask(&hgyro1);
 	}
 }
 //SPI DMA finished receiving and transmitting data
@@ -153,7 +152,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		{
 			hgyro1.currentTask=NONE;
 		}
-		i3g4250d_checkBlockedTask(&hgyro1);
+		i3g4250d_startNextTask(&hgyro1);
 	}
 }
 //SPI DMA finished transmitting data
@@ -177,7 +176,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 		{
 			hgyro1.currentTask=NONE;
 		}
-		i3g4250d_checkBlockedTask(&hgyro1);
+		i3g4250d_startNextTask(&hgyro1);
 	}
 }
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)

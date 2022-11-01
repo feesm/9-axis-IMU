@@ -280,55 +280,6 @@ HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi,
 	return status;
 }
 
-/* function:		i3g4250d_checkBlockedTask
- * description:		check if a task related to i3g4250d was blocked, because of a busy port and call that.
- ***************************************************************
- * *handle:		pointer to sensor handle
- ***************************************************************
- * returns:		-
- */
-void i3g4250d_checkBlockedTask(i3g4250d *handle)
-{
-	if(handle->nextTask[0] == i3g4250d_NONE)
-		return;
-	i3g4250d_sensorTask nextTask = handle->nextTask[0];
-	for(int i = 0; i < I3G4250D_TASKQUEUESIZE - 1; i++)
-		handle->nextTask[i] = handle->nextTask[i + 1];
-	handle->nextTask[I3G4250D_TASKQUEUESIZE - 1] = i3g4250d_NONE;
-	switch(nextTask)
-	{
-	case i3g4250d_GETANGULARRATE:
-		{
-			i3g4250d_readSensorData(handle);
-			break;
-		}
-	case i3g4250d_GETTEMPERATURE:
-		{
-			i3g4250d_readTemperature(handle);
-			break;
-		}
-	case i3g4250d_CHANGEANGRANGE245DPS:
-		{
-			i3g4250d_changeRange(handle, 245);
-			break;
-		}
-	case i3g4250d_CHANGEANGRANGE500DPS:
-		{
-			i3g4250d_changeRange(handle, 500);
-			break;
-		}
-	case i3g4250d_CHANGEANGRANGE2000DPS:
-		{
-			i3g4250d_changeRange(handle, 2000);
-			break;
-		}
-	default:
-		{
-			break;
-		}
-	}
-}
-
 /* function:		i3g4250d_readSensorData
  * description:		read i3g4250d angular velocity raw data register in non blocking mode.
  * 			Raw Data will be saved in RxBuf array of handle.
@@ -428,4 +379,51 @@ inline void i3g4250d_calcTemperature(i3g4250d *handle)
 	handle->currentTask = i3g4250d_NONE;
 }
 
-
+/* function:		i3g4250d_startNextTask
+ * description:		check if a task related to i3g4250d was blocked, because of a busy port and call that.
+ ***************************************************************
+ * *handle:		pointer to sensor handle
+ ***************************************************************
+ * returns:		-
+ */
+void i3g4250d_startNextTask(i3g4250d *handle)
+{
+	if(handle->nextTask[0] == i3g4250d_NONE)
+		return;
+	i3g4250d_sensorTask nextTask = handle->nextTask[0];
+	for(int i = 0; i < I3G4250D_TASKQUEUESIZE - 1; i++)
+		handle->nextTask[i] = handle->nextTask[i + 1];
+	handle->nextTask[I3G4250D_TASKQUEUESIZE - 1] = i3g4250d_NONE;
+	switch(nextTask)
+	{
+	case i3g4250d_GETANGULARRATE:
+		{
+			i3g4250d_readSensorData(handle);
+			break;
+		}
+	case i3g4250d_GETTEMPERATURE:
+		{
+			i3g4250d_readTemperature(handle);
+			break;
+		}
+	case i3g4250d_CHANGEANGRANGE245DPS:
+		{
+			i3g4250d_changeRange(handle, 245);
+			break;
+		}
+	case i3g4250d_CHANGEANGRANGE500DPS:
+		{
+			i3g4250d_changeRange(handle, 500);
+			break;
+		}
+	case i3g4250d_CHANGEANGRANGE2000DPS:
+		{
+			i3g4250d_changeRange(handle, 2000);
+			break;
+		}
+	default:
+		{
+			break;
+		}
+	}
+}

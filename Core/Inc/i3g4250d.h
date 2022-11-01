@@ -108,11 +108,11 @@ typedef struct _i3g4250d	//i3g4250d sensor handle
 /*public function prototypes--------------------------------------------------------------------------------*/
 
 HAL_StatusTypeDef i3g4250d_config(i3g4250d *handle, SPI_HandleTypeDef *SPI_hspi, uint16_t SPI_cs_Pin, GPIO_TypeDef * SPI_cs_Reg, DMA_HandleTypeDef *SPI_hdma_rx, DMA_HandleTypeDef *SPI_hdma_tx);
-void i3g4250d_checkBlockedTask(i3g4250d *handle);
 HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle);
 void i3g4250d_calcSensorData(i3g4250d *handle);
 HAL_StatusTypeDef i3g4250d_readTemperature(i3g4250d *handle);
 void i3g4250d_calcTemperature(i3g4250d *handle);
+void i3g4250d_startNextTask(i3g4250d *handle);
 
 
 #ifdef __cplusplus
