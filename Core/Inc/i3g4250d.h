@@ -84,8 +84,9 @@ typedef enum _i3g4250d_sensorTask
 
 }i3g4250d_sensorTask;
 
+/*i3g4250d sensor handle*/
 
-typedef struct _i3g4250d	//i3g4250d sensor handle
+typedef struct _i3g4250d
 {
 	SPI_HandleTypeDef	*hspi;
 	DMA_HandleTypeDef	*hdma_rx;
