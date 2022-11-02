@@ -313,9 +313,10 @@ void lsm303agr_calcSensorData_A(lsm303agr *handle)
 		raw[i]=handle->rxBuf[2*i]|handle->rxBuf[2*i+1]<<8;
 		raw[i]>>=16 - handle->precision_A;
 	}
-	handle->x_A=raw[0]*handle->multiplicator_A;
-	handle->y_A=raw[1]*handle->multiplicator_A;
-	handle->z_A=raw[2]*handle->multiplicator_A;
+	handle->x_A=raw[0]*handle->multiplicator_A - OFFSET_X_A;
+	handle->y_A=raw[1]*handle->multiplicator_A - OFFSET_Y_A;
+	handle->z_A=raw[2]*handle->multiplicator_A - OFFSET_Z_A;
+
 	lsm303agr_adjustRange_A(handle);
 }
 

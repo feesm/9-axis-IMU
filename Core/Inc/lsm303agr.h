@@ -113,6 +113,10 @@ extern "C" {
 
 #define LSM303AGR_TASKQUEUESIZE 3
 
+#define OFFSET_X_A		-0.029738196
+#define OFFSET_Y_A		-0.074806667
+#define OFFSET_Z_A		0.0F
+
 /*lsm303agr typedefs----------------------------------------------------------------------------------------*/
 
 typedef enum _lsm303agr_sensorTask

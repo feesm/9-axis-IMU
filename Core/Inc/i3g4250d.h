@@ -69,6 +69,10 @@ extern "C" {
 #define DEFAULT_CTRL_REG4 	0x00
 #define DEFAULT_CTRL_REG5 	0x00
 
+#define OFFSET_X_ANG		-0.261397711
+#define OFFSET_Y_ANG		-0.017590046
+#define OFFSET_Z_ANG		-0.946353797
+
 /*i3g4250d typedefs--------------------------------------------------------------------------------------*/
 
 typedef enum _i3g4250d_sensorTask

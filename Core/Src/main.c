@@ -84,6 +84,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				++outputMode;
 			else
 				outputMode = 0;
+			himu.pitch = 0;
+			himu.roll = 0;
 			break;
 		}
 		case DRDY_INT2_Pin:	//i3g4250d has new data available
