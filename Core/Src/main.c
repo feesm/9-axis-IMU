@@ -55,6 +55,7 @@ TIM_HandleTypeDef htim17;
 /* USER CODE BEGIN PV */
 i3g4250d hgyro1;
 lsm303agr heCompass;
+imu himu;
 int outputMode = 0;
 /* USER CODE END PV */
 
@@ -79,7 +80,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case Blue_Push_Button_Pin:	//blue button is pressed
 		{
 			//DEBUG: change which sensor value is send via USB
-			if(outputMode != 2)
+			if(outputMode != 3)
 				++outputMode;
 			else
 				outputMode = 0;
@@ -122,8 +123,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			sprintf(&tempChar[0],"%f\t%f\t%f\n",hgyro1.x,hgyro1.y,hgyro1.z);
 		else if(outputMode == 1)
 			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_A,heCompass.y_A,heCompass.z_A);
-		else
+		else if(outputMode == 2)
 			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_M,heCompass.y_M,heCompass.z_M);
+		else
+			sprintf(&tempChar[0],"%f\t%f\t%f\n",himu.pitch,himu.roll,himu.yaw);
 		CDC_Transmit_FS((uint8_t*)&tempChar[0],40);
 
 	}
@@ -142,6 +145,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 			hgyro1.currentTask=i3g4250d_NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
+			imu_calcRotation_complementaryFilter(&himu);
 		}
 		else if(hgyro1.currentTask==i3g4250d_GETTEMPERATURE) //new raw temperature data available
 		{
@@ -284,6 +288,11 @@ int main(void)
   //configure sensor
   i3g4250d_config(&hgyro1,&hspi1,CS_I2C_SPI_Pin,GPIOE,&hdma_spi1_rx,&hdma_spi1_tx);
   lsm303agr_config(&heCompass, &hi2c1, &hdma_i2c1_rx, &hdma_i2c1_tx);
+  himu.heCompass = &heCompass;
+  himu.hgyroscope = &hgyro1;
+  himu.pitch = 0;
+  himu.roll = 0;
+  himu.yaw = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
