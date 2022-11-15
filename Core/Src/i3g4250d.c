@@ -307,7 +307,7 @@ HAL_StatusTypeDef i3g4250d_readSensorData(i3g4250d *handle)
 }
 
 /* function:		i3g4250d_calcSensorData
- * description:		calculate the angular velocity of i3g4250d with the raw values in the rxBuf array in the handle.
+ * description:		calculate the angular velocity of i3g4250d with the raw values in the rxBuf array in the handle and low pass filter them.
  * 			i3g4250d_readSensorData have to be called before this function and the DMA have to been finished the SPI communication
  * 			to get correct values.
  ***************************************************************
@@ -330,9 +330,11 @@ void i3g4250d_calcSensorData(i3g4250d *handle)
 	raw[0]=(handle->rxBuf[1] | (handle->rxBuf[2] << 8));
 	raw[1]=(handle->rxBuf[3] | (handle->rxBuf[4] << 8));
 	raw[2]=(handle->rxBuf[5] | (handle->rxBuf[6] << 8));
-	handle->x = raw[0] * fac;
-	handle->y = raw[1] * fac;
-	handle->z = raw[2] * fac;
+
+	handle->x = LPF_ANG_ALPHA * handle->x + (1 - LPF_ANG_ALPHA) * (raw[0] * fac - OFFSET_X_ANG);
+	handle->y = LPF_ANG_ALPHA * handle->y + (1 - LPF_ANG_ALPHA) * (raw[1] * fac - OFFSET_Y_ANG);
+	handle->z = LPF_ANG_ALPHA * handle->z + (1 - LPF_ANG_ALPHA) * (raw[2] * fac - OFFSET_Z_ANG);
+
 	handle->currentTask = i3g4250d_NONE;
 	i3g4250d_adjustRange(handle);
 }

@@ -297,7 +297,7 @@ HAL_StatusTypeDef lsm303agr_readSensorData_A(lsm303agr *handle)
 }
 
 /* function:		lsm303agr_calcSensorData_A
- * description:		calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
+ * description:		calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle and low pass filter them.
  * 			lsm303agr_readSensorData_A have to be called before this function and the DMA have to been finished the SPI communication
  * 			to get correct values.
  ***************************************************************
@@ -313,11 +313,13 @@ void lsm303agr_calcSensorData_A(lsm303agr *handle)
 		raw[i]=handle->rxBuf[2*i]|handle->rxBuf[2*i+1]<<8;
 		raw[i]>>=16 - handle->precision_A;
 	}
-	handle->x_A=raw[0]*handle->multiplicator_A;
-	handle->y_A=raw[1]*handle->multiplicator_A;
-	handle->z_A=raw[2]*handle->multiplicator_A;
+	handle->x_A = LPF_ACC_ALPHA * handle->x_A + (1 - LPF_ACC_ALPHA) * (raw[0]*handle->multiplicator_A - OFFSET_X_A);
+	handle->y_A = LPF_ACC_ALPHA * handle->y_A + (1 - LPF_ACC_ALPHA) * (raw[1]*handle->multiplicator_A - OFFSET_Y_A);
+	handle->z_A = LPF_ACC_ALPHA * handle->z_A + (1 - LPF_ACC_ALPHA) * (raw[2]*handle->multiplicator_A - OFFSET_Z_A);
+
 	lsm303agr_adjustRange_A(handle);
 }
+
 
 /* function:		lsm303agr_readSensorData_M
  * description:		read lsm303agr magnetic raw data register in non blocking mode.
@@ -342,7 +344,7 @@ HAL_StatusTypeDef lsm303agr_readSensorData_M(lsm303agr *handle)
 	return HAL_I2C_Mem_Read_DMA(handle->hi2c,MAGNETICSENSOR<<1,handle->txBuf[0],1,&handle->rxBuf[0],6);
 }
 
-/* function:		lsm303agr_readSensorData_M
+/* function:		lsm303agr_setSingleMode_M
  * description:		write lsm303agr's CFG_REG_A_M register to set the magnetic sensor to single mode
  * 			after new data is available,  lsm303agr be automatically set in idle mode
  ***************************************************************
@@ -366,8 +368,8 @@ HAL_StatusTypeDef lsm303agr_setSingleMode_M(lsm303agr *handle)
 }
 
 /* function:		lsm303agr_calcSensorData_M
- * description:		calculate the acceleration of lsm303agr with the raw values in the rxBuf array in the handle.
- * 			lsm303agr_readSensorData_A have to be called before this function and the DMA have to been finished the SPI communication
+ * description:		calculate the magnetic field strength of lsm303agr with the raw values in the rxBuf array in the handle and low pass filter them.
+ * 			lsm303agr_readSensorData_M have to be called before this function and the DMA have to been finished the SPI communication
  * 			to get correct values.
  ***************************************************************
  * *handle:		pointer to sensor handle
@@ -379,9 +381,10 @@ void lsm303agr_calcSensorData_M(lsm303agr *handle)
 	int16_t raw[3];
 	for(int i=0;i<3;i++)
 		raw[i]=handle->rxBuf[2*i]|handle->rxBuf[2*i+1]<<8;
-	handle->x_M=raw[0]*0.0015;
-	handle->y_M=raw[1]*0.0015;
-	handle->z_M=raw[2]*0.0015;
+
+	handle->x_M = LPF_MAG_ALPHA * handle->x_M + (1 - LPF_MAG_ALPHA) * (raw[0]*0.15);
+	handle->y_M = LPF_MAG_ALPHA * handle->y_M + (1 - LPF_MAG_ALPHA) * (raw[1]*0.15);
+	handle->z_M = LPF_MAG_ALPHA * handle->z_M + (1 - LPF_MAG_ALPHA) * (raw[2]*0.15);
 }
 
 /* function:		lsm303agr_startNextTask
