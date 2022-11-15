@@ -17,10 +17,20 @@ extern "C" {
 #include "i3g4250d.h"
 #include "lsm303agr.h"
 #include <math.h>
+#include <stdio.h>
+
+
+/*IMU macros----------------------------------------------------------------------------------------------*/
+
+#ifndef SQUARE
+#define SQUARE(BASE) (BASE * BASE)
+#endif
 
 /*IMU constants---------------------------------------------------------------------------------------------*/
 
-#define ALPHA 0.01
+#define COMPLEMENTARY_ALPHA	0.01
+#define RADTODEG		57.295780181884765625
+#define ODRGYRO			800
 
 /*IMU handle------------------------------------------------------------------------------------------------*/
 
@@ -34,6 +44,9 @@ typedef struct _imu
 }imu;
 
 /*public function prototypes--------------------------------------------------------------------------------*/
+
+void sendSensorDataString(imu *handle, uint8_t mode);
+void sendSensorDataFloat(imu *handle);
 
 void imu_calcRotation_complementaryFilter(imu *handle);
 

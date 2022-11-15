@@ -86,6 +86,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				outputMode = 0;
 			himu.pitch = 0;
 			himu.roll = 0;
+			himu.yaw = 0;
 			break;
 		}
 		case DRDY_INT2_Pin:	//i3g4250d has new data available
@@ -118,18 +119,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	else if (htim == &htim17 )//50Hz
 	{
 		//DEBUG: send sensor values via USB
-		char tempChar[40];
-		for(int i=0; i<40; i++)
-			tempChar[i] = 0;
-		if(outputMode == 0)
-			sprintf(&tempChar[0],"%f\t%f\t%f\n",hgyro1.x,hgyro1.y,hgyro1.z);
-		else if(outputMode == 1)
-			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_A,heCompass.y_A,heCompass.z_A);
-		else if(outputMode == 2)
-			sprintf(&tempChar[0],"%f\t%f\t%f\n",heCompass.x_M,heCompass.y_M,heCompass.z_M);
-		else
-			sprintf(&tempChar[0],"%f\t%f\t%f\n",himu.pitch,himu.roll,himu.yaw);
-		CDC_Transmit_FS((uint8_t*)&tempChar[0],40);
+		sendSensorDataString(&himu, outputMode);
 
 	}
 }
