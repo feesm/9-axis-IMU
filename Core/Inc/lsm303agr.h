@@ -115,7 +115,10 @@ extern "C" {
 
 #define OFFSET_X_A		-0.029738196
 #define OFFSET_Y_A		-0.074806667
-#define OFFSET_Z_A		0.0F
+#define OFFSET_Z_A		0.0
+
+#define LPF_ACC_ALPHA		0.1
+#define LPF_MAG_ALPHA		0.1
 
 /*lsm303agr typedefs----------------------------------------------------------------------------------------*/
 

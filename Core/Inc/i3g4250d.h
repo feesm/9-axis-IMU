@@ -16,6 +16,7 @@ extern "C" {
 
 #include "stm32f3xx_hal.h"
 
+
 /*i3g4250d macros-------------------------------------------------------------------------------------*/
 
 #define I3G4250D_READY(phandle)  (phandle->currentTask==i3g4250d_NONE \
@@ -72,6 +73,8 @@ extern "C" {
 #define OFFSET_X_ANG		-0.261397711
 #define OFFSET_Y_ANG		-0.017590046
 #define OFFSET_Z_ANG		-0.946353797
+
+#define LPF_ANG_ALPHA		0.01
 
 /*i3g4250d typedefs--------------------------------------------------------------------------------------*/
 
