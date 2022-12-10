@@ -56,7 +56,7 @@ TIM_HandleTypeDef htim17;
 i3g4250d hgyro1;
 lsm303agr heCompass;
 imu himu;
-int outputMode = 0;
+int outputMode = 3;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -84,9 +84,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 				++outputMode;
 			else
 				outputMode = 0;
-			himu.pitch = 0;
-			himu.roll = 0;
-			himu.yaw = 0;
 			break;
 		}
 		case DRDY_INT2_Pin:	//i3g4250d has new data available
@@ -118,8 +115,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 	else if (htim == &htim17 )//50Hz
 	{
-		//DEBUG: send sensor values via USB
-		sendSensorDataString(&himu, outputMode);
+		lsm303agr_readSensorData_A(&heCompass);
+		i3g4250d_readSensorData(&hgyro1);
 
 	}
 }
@@ -137,7 +134,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 			hgyro1.currentTask=i3g4250d_NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
-			imu_calcRotation_complementaryFilter(&himu);
+			himu.state = KAL_PREDICT;
 		}
 		else if(hgyro1.currentTask==i3g4250d_GETTEMPERATURE) //new raw temperature data available
 		{
@@ -188,6 +185,7 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			case lsm303agr_GetAcceleration:
 			{
 				lsm303agr_calcSensorData_A(&heCompass);
+				himu.state = KAL_UPDATE;
 				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
@@ -280,11 +278,7 @@ int main(void)
   //configure sensor
   i3g4250d_config(&hgyro1,&hspi1,CS_I2C_SPI_Pin,GPIOE,&hdma_spi1_rx,&hdma_spi1_tx);
   lsm303agr_config(&heCompass, &hi2c1, &hdma_i2c1_rx, &hdma_i2c1_tx);
-  himu.heCompass = &heCompass;
-  himu.hgyroscope = &hgyro1;
-  himu.pitch = 0;
-  himu.roll = 0;
-  himu.yaw = 0;
+  himu.state = KAL_INIT;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -292,7 +286,33 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  switch(himu.state)
+	  {
+		  case KAL_INIT:
+		  {
+			  imu_init_kalmanFilter(&himu, &hgyro1, &heCompass);
+			  himu.state = KAL_NONE;
+			  break;
+		  }
+		  case KAL_UPDATE:
+		  {
+			  imu_updateAngles_kalmanFilter(&himu);
+			  sendSensorDataString(&himu, outputMode);
+			  himu.state = KAL_NONE;
+			  break;
+		  }
+		  case KAL_PREDICT:
+		  {
+			  imu_predictAngles_kalmanFilter(&himu);
+			  sendSensorDataString(&himu, outputMode);
+			  himu.state = KAL_NONE;
+			  break;
+		  }
+		  default:
+		  {
+			  break;
+		  }
+	  }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

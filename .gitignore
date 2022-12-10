@@ -5,6 +5,7 @@ Debug/
 Drivers/
 Middlewares/
 USB_DEVICE/
+Octave/
 .cproject
 .mxproject
 .project

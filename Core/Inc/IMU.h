@@ -32,6 +32,16 @@ extern "C" {
 #define RADTODEG		57.295780181884765625
 #define ODRGYRO			800
 
+/*kalman state status---------------------------------------------------------------------------------------*/
+
+typedef enum _kalman_state
+{
+	KAL_NONE,
+	KAL_INIT,
+	KAL_UPDATE,
+	KAL_PREDICT
+}kalman_state;
+
 /*IMU handle------------------------------------------------------------------------------------------------*/
 
 typedef struct _imu
@@ -41,6 +51,9 @@ typedef struct _imu
 	float		pitch;
 	float		yaw;
 	float		roll;
+	float		p[4];
+	float		t_last;
+	kalman_state	state;
 }imu;
 
 /*public function prototypes--------------------------------------------------------------------------------*/
@@ -49,6 +62,10 @@ void sendSensorDataString(imu *handle, uint8_t mode);
 void sendSensorDataFloat(imu *handle);
 
 void imu_calcRotation_complementaryFilter(imu *handle);
+
+void imu_init_kalmanFilter(imu *handle, i3g4250d *gyro, lsm303agr *eCompass);
+void imu_predictAngles_kalmanFilter(imu *handle);
+void imu_updateAngles_kalmanFilter(imu *handle);
 
 #ifdef __cplusplus
 extern }
