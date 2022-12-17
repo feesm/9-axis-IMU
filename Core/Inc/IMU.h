@@ -51,7 +51,7 @@ typedef struct _imu
 	float		pitch;
 	float		yaw;
 	float		roll;
-	float		p[4];
+	float		p[9];
 	float		t_last;
 	float		mag_x;
 	float		mag_z;
@@ -67,7 +67,7 @@ void imu_calcRotation_complementaryFilter(imu *handle);
 
 void imu_init_kalmanFilter(imu *handle, i3g4250d *gyro, lsm303agr *eCompass);
 void imu_predictAngles_kalmanFilter(imu *handle);
-void imu_updateAngles_kalmanFilter(imu *handle);
+void imu_updateAngles_acc_EKF(imu *handle);
 void imu_updateAngles_mag_EKF(imu *handle);
 
 #ifdef __cplusplus

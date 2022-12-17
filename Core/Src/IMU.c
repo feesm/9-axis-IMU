@@ -28,7 +28,7 @@ void sendSensorDataString(imu *handle, uint8_t mode)
 	else if(mode == 2)
 		sprintf(&tempChar[0], "%f\t%f\t%f\n", handle->heCompass->x_M, handle->heCompass->y_M, handle->heCompass->z_M);
 	else
-		sprintf(&tempChar[0], "%f\t%f\n", handle->pitch, handle->roll);
+		sprintf(&tempChar[0], "%f\t%f\t%f\n", handle->pitch, handle->roll, handle->yaw);
 	CDC_Transmit_FS((uint8_t*)tempChar,40);
 }
 
@@ -151,13 +151,17 @@ void imu_predictAngles_kalmanFilter(imu *handle)
  ***************************************************************
  * returns:		-
  */
-void imu_updateAngles_kalmanFilter(imu *handle)
+void imu_updateAngles_acc_EKF(imu *handle)
 {
-	float p[4] = {handle->p[0],	//temporary error convenience
-		handle->p[1],
-		handle->p[2],
-		handle->p[3]
-	};
+	float p[9] = {handle->p[0],
+			handle->p[1],
+			handle->p[2],
+			handle->p[3],
+			handle->p[4],
+			handle->p[5],
+			handle->p[6],
+			handle->p[7],
+			handle->p[8]};
 	float r[9] = {0.01,0,0,0,0.01,0,0,0,0.01};
 	float g = 9.81;
 
@@ -173,26 +177,24 @@ void imu_updateAngles_kalmanFilter(imu *handle)
 	h[2] = -g * cp * cr;
 
 	/* calculate jacobian C of function h(x) *****************/
-	float c[6];
-	c[0] = 0;
-	c[1] = g * cp;
-	c[2] = -g * cp * cr;
-	c[3] = g * sr * sp;
-	c[4] = g * sr * cp;
-	c[5] = g * sp * cr;
+	float c[9];
+	c[2] = g * cp;
+	c[4] = -g * cp * cr;
+	c[5] = g * sr * sp;
+	c[7] = g * sr * cp;
+	c[8] = g * sp * cr;
 
 	/* calculate kalman gain K *******************************/
 	//G=c*p*ct+r
-	float G[9];	//3x3 Matrix
-	G[0] = c[1] * c[1] * p[3] + r[0];
-	G[1] = c[2] * c[1] * p[2] + c[3] * c[1] * p[3] + r[1];
-	G[2] = c[4] * c[1] * p[2] + c[5] * c[1] * p[3] + r[2];
-	G[3] = c[1] * (c[2] * p[1] + c[3] * p[3]) + r[3];
-	G[4] = c[2] * (c[2] * p[0] + c[3] * p[2]) + c[3] * (c[2] * p[1] + c[3] * p[3]) + r[4];
-	G[5] = c[4] * (c[2] * p[0] + c[3] * p[2]) + c[5] * (c[2] * p[1] + c[3] * p[3]) + r[5];
-	G[6] = c[1] * (c[4] * p[1] + c[5] * p[3]) + r[6];
-	G[7] = c[2] * (c[4] * p[0] + c[5] * p[2]) + c[3] * (c[4] * p[1] + c[5] * p[3]) + r[7];
-	G[8] = c[4] * (c[4] * p[0] + c[5] * p[2]) + c[5] * (c[4] * p[1] + c[5] * p[3]) + r[8];
+	float G[9] = {c[2] * c[2] * p[8] + r[0],
+			c[4] * c[2] * p[7] + c[5] * c[2] * p[8],
+			c[7] * c[2] * p[7] + c[8] * c[2] * p[8],
+			c[2] * (c[4] * p[5] + c[5] * p[8]),
+			c[4] * (c[4] * p[4] + c[5] * p[7]) + c[5] * (c[4] * p[5] + c[5] * p[8]) + r[4],
+			c[7] * (c[4] * p[4] + c[5] * p[7]) + c[8] * (c[4] * p[5] + c[5] * p[8]),
+			c[2] * (c[7] * p[5] + c[8] * p[8]),
+			c[4] * (c[7] * p[4] + c[8] * p[7]) + c[5] * (c[7] * p[5] + c[8] * p[8]),
+			c[7] * (c[7] * p[4] + c[8] * p[7]) + c[8] * (c[7] * p[5] + c[8] * p[8]) + r[8]};
 
 	//numinv(G)
 	float numinv[9];
@@ -212,23 +214,31 @@ void imu_updateAngles_kalmanFilter(imu *handle)
 		inv[i] = numinv[i] / (G[0] * G[4] * G[8] - G[0] * G[5] * G[7] - G[1] * G[3] * G[8] + G[1] * G[5] * G[6] + G[2] * G[3] * G[7] - G[2] * G[4] * G[6]);
 
 	//calculate kalman gain k=p*ct*y
-	float k[6];
-	k[0] = inv[0] * c[1] * p[1] + inv[3] * (c[2] * p[0] + c[3] * p[1]) + inv[6] * (c[4] * p[0] + c[5] * p[1]);
-	k[1] = inv[1] * c[1] * p[1] + inv[4] * (c[2] * p[0] + c[3] * p[1]) + inv[7] * (c[4] * p[0] + c[5] * p[1]);
-	k[2] = inv[2] * c[1] * p[1] + inv[5] * (c[2] * p[0] + c[3] * p[1]) + inv[8] * (c[4] * p[0] + c[5] * p[1]);
-	k[3] = inv[0] * c[1] * p[3] + inv[3] * (c[2] * p[2] + c[3] * p[3]) + inv[6] * (c[4] * p[2] + c[5] * p[3]);
-	k[4] = inv[1] * c[1] * p[3] + inv[4] * (c[2] * p[2] + c[3] * p[3]) + inv[7] * (c[4] * p[2] + c[5] * p[3]);
-	k[5] = inv[2] * c[1] * p[3] + inv[5] * (c[2] * p[2] + c[3] * p[3]) + inv[8] * (c[4] * p[2] + c[5] * p[3]);
+	float k[9] = {inv[0] * c[2] * p[2] + inv[3] * (c[4] * p[1] + c[5] * p[2]) + inv[6] * (c[7] * p[1] + c[8] * p[2]),
+			inv[1] * c[2] * p[2] + inv[4] * (c[4] * p[1] + c[5] * p[2]) + inv[7] * (c[7] * p[1] + c[8] * p[2]),
+			inv[2] * c[2] * p[2] + inv[5] * (c[4] * p[1] + c[5] * p[2]) + inv[8] * (c[7] * p[1] + c[8] * p[2]),
+			inv[0] * c[2] * p[5] + inv[3] * (c[4] * p[4] + c[5] * p[5]) + inv[6] * (c[7] * p[4] + c[8] * p[5]),
+			inv[1] * c[2] * p[5] + inv[4] * (c[4] * p[4] + c[5] * p[5]) + inv[7] * (c[7] * p[4] + c[8] * p[5]),
+			inv[2] * c[2] * p[5] + inv[5] * (c[4] * p[4] + c[5] * p[5]) + inv[8] * (c[7] * p[4] + c[8] * p[5]),
+			inv[0] * c[2] * p[8] + inv[3] * (c[4] * p[7] + c[5] * p[8]) + inv[6] * (c[7] * p[7] + c[8] * p[8]),
+			inv[1] * c[2] * p[8] + inv[4] * (c[4] * p[7] + c[5] * p[8]) + inv[7] * (c[7] * p[7] + c[8] * p[8]),
+			inv[2] * c[2] * p[8] + inv[5] * (c[4] * p[7] + c[5] * p[8]) + inv[8] * (c[7] * p[7] + c[8] * p[8])};
 
 	/* apply correction to the estimated angles **************/
-	handle->roll += + k[0] * (-handle->heCompass->y_A*g - h[0]) + k[1] * (handle->heCompass->x_A*g - h[1]) + k[2] * (-handle->heCompass->z_A*g - h[2]);
-	handle->pitch +=  + k[3] * (-handle->heCompass->y_A*g - h[0]) + k[4] * (handle->heCompass->x_A*g - h[1]) + k[5] * (-handle->heCompass->z_A*g - h[2]);
+	handle->yaw += k[0] * (-handle->heCompass->y_A - h[0]) + k[1] * (handle->heCompass->x_A - h[1]) + k[2] * (-handle->heCompass->z_A - h[2]);
+	handle->roll += k[3] * (-handle->heCompass->y_A - h[0]) + k[4] * (handle->heCompass->x_A - h[1]) + k[5] * (-handle->heCompass->z_A - h[2]);
+	handle->pitch += k[6] * (-handle->heCompass->y_A - h[0]) + k[7] * (handle->heCompass->x_A - h[1]) + k[8] * (-handle->heCompass->z_A - h[2]);
 
 	/* update error convenience P of predicted angles ********/
-	handle->p[0] = p[0] * (- c[2] * k[1] - c[4] * k[2] + 1.0F) + p[2] * (-c[1] * k[0] - c[3] * k[1] - c[5] * k[2]);
-	handle->p[1] = p[1] * (- c[2] * k[1] - c[4] * k[2] + 1.0F) + p[3] * (-c[1] * k[0] - c[3] * k[1] - c[5] * k[2]);
-	handle->p[2] = p[0] * (- c[2] * k[4] - c[4] * k[5]) + p[2] * (-c[1] * k[3] - c[3] * k[4] - c[5] * k[5] + 1.0F);
-	handle->p[3] = p[1] * (- c[2] * k[4] - c[4] * k[5]) + p[3] * (-c[1] * k[3] - c[3] * k[4] - c[5] * k[5] + 1.0F);
+	handle->p[0] = p[0] + p[3] * (-c[4] * k[1] - c[7] * k[2]) + p[6] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
+	handle->p[1] = p[1] + p[4] * (-c[4] * k[1] - c[7] * k[2]) + p[7] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
+	handle->p[2] = p[2] + p[5] * (-c[4] * k[1] - c[7] * k[2]) + p[8] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
+	handle->p[3] = p[3] * (-c[4] * k[4] - c[7] * k[5] + 1) + p[6] * (-c[2] * k[3] - c[5] * k[4] - c[8] * k[5]);
+	handle->p[4] = p[4] * (-c[4] * k[4] - c[7] * k[5] + 1) + p[7] * (-c[2] * k[3] - c[5] * k[4] - c[8] * k[5]);
+	handle->p[5] = p[5] * (-c[4] * k[4] - c[7] * k[5] + 1) + p[8] * (-c[2] * k[3] - c[5] * k[4] - c[8] * k[5]);
+	handle->p[6] = p[3] * (-c[4] * k[7] - c[7] * k[8]) + p[6] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
+	handle->p[7] = p[4] * (-c[4] * k[7] - c[7] * k[8]) + p[7] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
+	handle->p[8] = p[5] * (-c[4] * k[7] - c[7] * k[8]) + p[8] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
 }
 void imu_updateAngles_mag_EKF(imu *handle)
 {

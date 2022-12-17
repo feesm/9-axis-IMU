@@ -296,7 +296,7 @@ int main(void)
 		  }
 		  case KAL_UPDATE:
 		  {
-			  imu_updateAngles_kalmanFilter(&himu);
+			  imu_updateAngles_acc_EKF(&himu);
 			  sendSensorDataString(&himu, outputMode);
 			  himu.state = KAL_NONE;
 			  break;
