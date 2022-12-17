@@ -90,10 +90,15 @@ void imu_init_kalmanFilter(imu *handle, i3g4250d *gyro, lsm303agr *eCompass)
  */
 void imu_predictAngles_kalmanFilter(imu *handle)
 {
-	float p[4] = {handle->p[0],
-		handle->p[1],
-		handle->p[2],
-		handle->p[3]};
+	float p[9] = {handle->p[0],
+			handle->p[1],
+			handle->p[2],
+			handle->p[3],
+			handle->p[4],
+			handle->p[5],
+			handle->p[6],
+			handle->p[7],
+			handle->p[8]};
 
 	/* get time t since last prediction **********************/
 	float t = HAL_GetTick() / 1000.0F - handle->t_last;
@@ -102,31 +107,41 @@ void imu_predictAngles_kalmanFilter(imu *handle)
 		return;
 
 	/* get the covariance of the sensor noise****************/
-	float q[4] = {0.03 * sqrt(t),
-			0.0,
-			0.0,
-			0.03 * sqrt(t)};
+	float q[9] = {0.03 * sqrt(t), 0.0, 0.0,
+			0.0, 0.03 * sqrt(t), 0.0,
+			0.0, 0.0, 0.03 * sqrt(t)};
 
 	/* get angle with Euler integration of f(x) **************/
 	handle->pitch -= (handle->hgyroscope->x * t)/ RADTODEG;
 	handle->roll -= (handle->hgyroscope->y * t)/ RADTODEG;
+	handle->yaw += (handle->hgyroscope->z * t)/ RADTODEG;
 
 	/* calculate jacobian A of function f(x)******************/
-	float tp = tan(handle->pitch );
+	float sp = sin(handle->pitch );
+	float cp = cos(handle->pitch );
+	float tp = sp / cp;
 	float sr = sin(handle->roll );
 	float cr = cos(handle->roll );
 
-	float a[4];
-	a[0] = tp * (handle->hgyroscope->x * cr - handle->hgyroscope->y * sr);
-	a[1] = (tp * tp + 1.0F) * (handle->hgyroscope->x * sr + handle->hgyroscope->z * cr);
-	a[2] = -handle->hgyroscope->x * sr - handle->hgyroscope->y * cr;
-	a[3] = 0;
+	float a[9];
+	a[1] = tp * (handle->hgyroscope->x * cr - handle->hgyroscope->y * sr);
+	a[2] = (tp * tp + 1.0F) * (handle->hgyroscope->x * sr + handle->hgyroscope->z * cr);
+	a[4] = -handle->hgyroscope->x * sr - handle->hgyroscope->y * cr;
+	a[7] = (handle->hgyroscope->x * cr - handle->hgyroscope->y * sr) / cp;
+	a[8] = (handle->hgyroscope->x * sr * sp + handle->hgyroscope->y * sp * cr) / (cp * cp);
 
 	/* update error convenience P of predicted angles ********/
-	handle->p[0] = p[0] + t * (2.0F * a[0] *p[0] + a[1] * p[1] + a[1] * p[2] + q[0]);
-	handle->p[1] = p[1] + t * (a[0] * p[1] + a[1] * p[3] + a[2] * p[0] + a[3] * p[1] + q[1]);
-	handle->p[2] = p[2] + t * (a[0] * p[2] + a[1] * p[3] + a[2] * p[0] + a[3] * p[2] + q[2]);
-	handle->p[3] = p[3] + t * (a[2] * p[1] + a[2] * p[2] + 2.0F * a[3] *p[3] + q[3]);
+	handle->p[0] += t * (a[1] *p[1] + a[1] * p[3] + a[2] * p[2] + a[2] * p[6] + q[0]);
+	handle->p[1] += t * (a[1] * p[4] + a[2] * p[7] + a[4] *p[1]);
+	handle->p[2] += t * (a[1] * p[5] + a[2] * p[8] + a[7] *p[1] + a[8] * p[2]);
+	handle->p[3] += t * (a[1] * p[4] + a[2] * p[5] + a[4] * p[3]);
+	handle->p[4] += t * (2.0F * a[4] * p[4] + q[4]);
+	handle->p[5] += t * (a[4] * p[5] + a[7] * p[4] + a[8] * p[5]);
+	handle->p[6] += t * (a[1] * p[7] + a[2] * p[8] + a[7] * p[3] + a[8] * p[6]);
+	handle->p[7] += t * (a[4] * p[7] + a[7] * p[4] + a[8] * p[7]);
+	handle->p[8] += t * (a[7] * p[5] + a[7] * p[7] + 2.0F * a[8] * p[8] + q[8]);
+
+
 }
 
 /* function:		imu_updateAngles_kalmanFilter
