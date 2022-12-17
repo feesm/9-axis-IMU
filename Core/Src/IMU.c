@@ -94,13 +94,18 @@ void imu_predictAngles_kalmanFilter(imu *handle)
 		handle->p[1],
 		handle->p[2],
 		handle->p[3]};
-	float q[4] = {0.001,0.001,0.001,0.001};
 
 	/* get time t since last prediction **********************/
 	float t = HAL_GetTick() / 1000.0F - handle->t_last;
 	handle->t_last = HAL_GetTick() / 1000.0F;
 	if(t > 4.0F/ODRGYRO)
 		return;
+
+	/* get the covariance of the sensor noise****************/
+	float q[4] = {0.03 * sqrt(t),
+			0.0,
+			0.0,
+			0.03 * sqrt(t)};
 
 	/* get angle with Euler integration of f(x) **************/
 	handle->pitch -= (handle->hgyroscope->x * t)/ RADTODEG;
@@ -138,7 +143,7 @@ void imu_updateAngles_kalmanFilter(imu *handle)
 		handle->p[2],
 		handle->p[3]
 	};
-	float r[9] = {0.011,0,0,0,0.011,0,0,0,0.011};
+	float r[9] = {0.01,0,0,0,0.01,0,0,0,0.01};
 	float g = 9.81;
 
 	float cr = cos(handle->roll );
@@ -209,4 +214,96 @@ void imu_updateAngles_kalmanFilter(imu *handle)
 	handle->p[1] = p[1] * (- c[2] * k[1] - c[4] * k[2] + 1.0F) + p[3] * (-c[1] * k[0] - c[3] * k[1] - c[5] * k[2]);
 	handle->p[2] = p[0] * (- c[2] * k[4] - c[4] * k[5]) + p[2] * (-c[1] * k[3] - c[3] * k[4] - c[5] * k[5] + 1.0F);
 	handle->p[3] = p[1] * (- c[2] * k[4] - c[4] * k[5]) + p[3] * (-c[1] * k[3] - c[3] * k[4] - c[5] * k[5] + 1.0F);
+}
+void imu_updateAngles_mag_EKF(imu *handle)
+{
+	//temporary error convenience
+	float p[9] = {handle->p[0],
+			handle->p[1],
+			handle->p[2],
+			handle->p[3],
+			handle->p[4],
+			handle->p[5],
+			handle->p[6],
+			handle->p[7],
+			handle->p[8]};
+	float r[9] = {3,0,0,0,3,0,0,0,3};
+
+	float sp = sin(handle->pitch);
+	float sr = sin(handle->roll);
+	float sy = sin(handle->yaw);
+	float cp = cos(handle->pitch);
+	float cr = cos(handle->roll);
+	float cy = cos(handle->yaw);
+
+	/* predict values of magnetometer with estimated angles */
+	float h[3] = {handle->mag_x * cy * cp - handle->mag_z * sp,
+			handle->mag_x * (sr * sp * cy - sy * cr) + handle->mag_z * sr * cp,
+			handle->mag_x * (sr * sy + sp * cr * cy) + handle->mag_z * cr * cp};
+
+	/* calculate jacobian C of function h(x) *****************/
+	float c[9] = {0,
+			-handle->mag_x * sp * cy - handle->mag_z * cp,
+			-handle->mag_x * sy * cp,
+			handle->mag_x * (-sr * sy - sp * cr * cy) + handle->mag_z * cr * cp,
+			handle->mag_x * sr * cy * cp - handle->mag_z * sr * sp,
+			handle->mag_x * (-sr * sy * sp - cr * cy),
+			handle->mag_x * (sr * sp * cy + sy * cr) - handle->mag_z * sr * cp,
+			handle->mag_x * cr * cy * cp - handle->mag_z * sp * cr,
+			handle->mag_x * (sr * cy - sy * sp * cr)};
+
+	/* calculate kalman gain K *******************************/
+	//G=c*p*ct+r
+	float G[9] = {c[0] *(c[0] * p[0] + c[1] * p[3] + c[2] * p[6]) + c[1] * (c[0] * p[1] + c[1] * p[4] + c[2] * p[7]) + c[2] * (c[0] * p[2] + c[1] * p[5] + c[2] * p[8]) + r[0],
+			c[3] *(c[0] * p[0] + c[1] * p[3] + c[2] * p[6]) + c[4] * (c[0] * p[1] + c[1] * p[4] + c[2] * p[7]) + c[5] * (c[0] * p[2] + c[1] * p[5] + c[2] * p[8]) + r[1],
+			c[6] *(c[0] * p[0] + c[1] * p[3] + c[2] * p[6]) + c[7] * (c[0] * p[1] + c[1] * p[4] + c[2] * p[7]) + c[8] * (c[0] * p[2] + c[1] * p[5] + c[2] * p[8]) + r[2],
+			c[0] *(c[3] * p[0] + c[4] * p[3] + c[5] * p[6]) + c[1] * (c[3] * p[1] + c[4] * p[4] + c[5] * p[7]) + c[2] * (c[3] * p[2] + c[4] * p[5] + c[5] * p[8]) + r[3],
+			c[3] *(c[3] * p[0] + c[4] * p[3] + c[5] * p[6]) + c[4] * (c[3] * p[1] + c[4] * p[4] + c[5] * p[7]) + c[5] * (c[3] * p[2] + c[4] * p[5] + c[5] * p[8]) + r[4],
+			c[6] *(c[3] * p[0] + c[4] * p[3] + c[5] * p[6]) + c[7] * (c[3] * p[1] + c[4] * p[4] + c[5] * p[7]) + c[8] * (c[3] * p[2] + c[4] * p[5] + c[5] * p[8]) + r[5],
+			c[0] *(c[6] * p[0] + c[7] * p[3] + c[8] * p[6]) + c[1] * (c[6] * p[1] + c[7] * p[4] + c[8] * p[7]) + c[2] * (c[6] * p[2] + c[7] * p[5] + c[8] * p[8]) + r[6],
+			c[3] *(c[6] * p[0] + c[7] * p[3] + c[8] * p[6]) + c[4] * (c[6] * p[1] + c[7] * p[4] + c[8] * p[7]) + c[5] * (c[6] * p[2] + c[7] * p[5] + c[8] * p[8]) + r[7],
+			c[6] *(c[6] * p[0] + c[7] * p[3] + c[8] * p[6]) + c[7] * (c[6] * p[1] + c[7] * p[4] + c[8] * p[7]) + c[8] * (c[6] * p[2] + c[7] * p[5] + c[8] * p[8]) + r[8]};
+
+	//numinv(G)
+	float numinv[9] = {G[4] * G[8] - G[5] * G[7],
+			G[2] * G[7] - G[1] * G[8],
+			G[1] * G[5] - G[2] * G[4],
+			G[5] * G[6] - G[3] * G[8],
+			G[0] * G[8] - G[2] * G[6],
+			G[2] * G[3] - G[0] * G[5],
+			G[3] * G[7] - G[4] * G[6],
+			G[1] * G[6] - G[0] * G[7],
+			G[0] * G[4] - G[1] * G[3]};
+
+	//inv(G)
+	float inv[9];
+	for (int i = 0; i < 9; i++)
+		inv[i] = numinv[i] / (G[0] * G[4] * G[8] - G[0] * G[5] * G[7] - G[1] * G[3] * G[8] + G[1] * G[5] * G[6] + G[2] * G[3] * G[7] - G[2] * G[4] * G[6]);
+
+	//calculate kalman gain k=p*ct*y
+	float k[9] = {inv[0] * (c[0] * p[0] + c[1] * p[1] + c[2] * p[2]) + inv[3] * (c[3] * p[0] + c[4] * p[1] + c[5] * p[2]) + inv[6] * (c[6] * p[0] + c[7] * p[1] + c[8] * p[2]),
+			inv[1] * (c[0] * p[0] + c[1] * p[1] + c[2] * p[2]) + inv[4] * (c[3] * p[0] + c[4] * p[1] + c[5] * p[2]) + inv[7] * (c[6] * p[0] + c[7] * p[1] + c[8] * p[2]),
+			inv[2] * (c[0] * p[0] + c[1] * p[1] + c[2] * p[2]) + inv[5] * (c[3] * p[0] + c[4] * p[1] + c[5] * p[2]) + inv[8] * (c[6] * p[0] + c[7] * p[1] + c[8] * p[2]),
+			inv[0] * (c[0] * p[3] + c[1] * p[4] + c[2] * p[5]) + inv[3] * (c[3] * p[3] + c[4] * p[4] + c[5] * p[5]) + inv[6] * (c[6] * p[3] + c[7] * p[4] + c[8] * p[5]),
+			inv[1] * (c[0] * p[3] + c[1] * p[4] + c[2] * p[5]) + inv[4] * (c[3] * p[3] + c[4] * p[4] + c[5] * p[5]) + inv[7] * (c[6] * p[3] + c[7] * p[4] + c[8] * p[5]),
+			inv[2] * (c[0] * p[3] + c[1] * p[4] + c[2] * p[5]) + inv[5] * (c[3] * p[3] + c[4] * p[4] + c[5] * p[5]) + inv[8] * (c[6] * p[3] + c[7] * p[4] + c[8] * p[5]),
+			inv[0] * (c[0] * p[6] + c[1] * p[7] + c[2] * p[8]) + inv[3] * (c[3] * p[6] + c[4] * p[7] + c[5] * p[8]) + inv[6] * (c[6] * p[6] + c[7] * p[7] + c[8] * p[8]),
+			inv[1] * (c[0] * p[6] + c[1] * p[7] + c[2] * p[8]) + inv[4] * (c[3] * p[6] + c[4] * p[7] + c[5] * p[8]) + inv[7] * (c[6] * p[6] + c[7] * p[7] + c[8] * p[8]),
+			inv[2] * (c[0] * p[6] + c[1] * p[7] + c[2] * p[8]) + inv[5] * (c[3] * p[6] + c[4] * p[7] + c[5] * p[8]) + inv[8] * (c[6] * p[6] + c[7] * p[7] + c[8] * p[8])};
+
+	/* apply correction to the estimated angles **************/
+	handle->yaw += k[0] * (-handle->heCompass->y_M - h[0]) + k[1] * (handle->heCompass->x_M - h[1]) + k[2] * (-handle->heCompass->z_M - h[2]);
+	handle->roll += k[3] * (-handle->heCompass->y_M - h[0]) + k[4] * (handle->heCompass->x_M - h[1]) + k[5] * (-handle->heCompass->z_M - h[2]);
+	handle->pitch += k[6] * (-handle->heCompass->y_M - h[0]) + k[7] * (handle->heCompass->x_M - h[1]) + k[8] * (-handle->heCompass->z_M - h[2]);
+
+	/* update error convenience P of predicted angles ********/
+	handle->p[0] = p[0] * (-c[0] * k[0] - c[3] * k[1] - c[6] * k[2] + 1) + p[3] * (-c[1] * k[0] - c[4] * k[1] - c[7] * k[2]) + p[6] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
+	handle->p[1] = p[1] * (-c[0] * k[0] - c[3] * k[1] - c[6] * k[2] + 1) + p[4] * (-c[1] * k[0] - c[4] * k[1] - c[7] * k[2]) + p[7] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
+	handle->p[2] = p[2] * (-c[0] * k[0] - c[3] * k[1] - c[6] * k[2] + 1) + p[5] * (-c[1] * k[0] - c[4] * k[1] - c[7] * k[2]) + p[8] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
+	handle->p[3] = p[0] * (-c[0] * k[3] - c[3] * k[4] - c[6] * k[5]) + p[3] * (-c[1] * k[3] - c[4] * k[4] - c[7] * k[5] + 1) + p[6] * (-c[2] * k[3] - c[5] * k[4] - c[8] * k[5]);
+	handle->p[4] = p[1] * (-c[0] * k[3] - c[3] * k[4] - c[6] * k[5]) + p[4] * (-c[1] * k[3] - c[4] * k[4] - c[7] * k[5] + 1) + p[7] * (-c[2] * k[3] - c[5] * k[4] - c[8] * k[5]);
+	handle->p[5] = p[2] * (-c[0] * k[3] - c[3] * k[4] - c[6] * k[5]) + p[5] * (-c[1] * k[3] - c[4] * k[4] - c[7] * k[5] + 1) + p[8] * (-c[2] * k[3] - c[5] * k[4] - c[8] * k[5]);
+	handle->p[6] = p[0] * (-c[0] * k[6] - c[3] * k[7] - c[6] * k[8]) + p[3] * (-c[1] * k[6] - c[4] * k[7] - c[7] * k[8]) + p[6] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
+	handle->p[7] = p[1] * (-c[0] * k[6] - c[3] * k[7] - c[6] * k[8]) + p[4] * (-c[1] * k[6] - c[4] * k[7] - c[7] * k[8]) + p[7] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
+	handle->p[8] = p[2] * (-c[0] * k[6] - c[3] * k[7] - c[6] * k[8]) + p[5] * (-c[1] * k[6] - c[4] * k[7] - c[7] * k[8]) + p[8] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
 }

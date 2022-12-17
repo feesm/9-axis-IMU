@@ -53,6 +53,8 @@ typedef struct _imu
 	float		roll;
 	float		p[4];
 	float		t_last;
+	float		mag_x;
+	float		mag_z;
 	kalman_state	state;
 }imu;
 
@@ -66,6 +68,7 @@ void imu_calcRotation_complementaryFilter(imu *handle);
 void imu_init_kalmanFilter(imu *handle, i3g4250d *gyro, lsm303agr *eCompass);
 void imu_predictAngles_kalmanFilter(imu *handle);
 void imu_updateAngles_kalmanFilter(imu *handle);
+void imu_updateAngles_mag_EKF(imu *handle);
 
 #ifdef __cplusplus
 extern }
