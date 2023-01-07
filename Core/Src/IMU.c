@@ -6,7 +6,6 @@
  */
 
 #include "IMU.h"
-
 /*public function definitions-------------------------------------------------------------------------------*/
 
 /* function:		sendSensorDataString
@@ -41,8 +40,8 @@ void sendSensorDataString(imu *handle, uint8_t mode)
  */
 void sendSensorDataFloat(imu *handle)
 {
-	float temp[9] = {handle->hgyroscope->x, handle->hgyroscope->y, handle->hgyroscope->z, handle->heCompass->x_A, handle->heCompass->y_A, handle->heCompass->z_A, handle->heCompass->x_M, handle->heCompass->y_M, handle->heCompass->z_M};
-	CDC_Transmit_FS((uint8_t*)temp,36);
+	float temp[12] = {handle->hgyroscope->x, handle->hgyroscope->y, handle->hgyroscope->z, handle->heCompass->x_A, handle->heCompass->y_A, handle->heCompass->z_A, handle->heCompass->x_M, handle->heCompass->y_M, handle->heCompass->z_M, handle->pitch, handle->roll, handle->yaw};
+	CDC_Transmit_FS((uint8_t*)temp,48);
 }
 
 /* function:		imu_calcRotation_complementaryFilter
@@ -77,8 +76,10 @@ void imu_init_kalmanFilter(imu *handle, i3g4250d *gyro, lsm303agr *eCompass)
 	  handle->pitch = 0;
 	  handle->roll = 0;
 	  handle->yaw = 0;
-	  for(int i=0; i<4;i++)
+	  for(int i=0; i<9;i++)
 		  handle->p[i] = 0;
+	  handle->mag_z = handle->heCompass->z_M;
+	  handle->mag_x = sqrt(handle->heCompass->x_M * handle->heCompass->x_M + handle->heCompass->y_M * handle->heCompass->y_M);
 }
 
 /* function:		imu_predictAngles_kalmanFilter
@@ -317,9 +318,9 @@ void imu_updateAngles_mag_EKF(imu *handle)
 			inv[2] * (c[0] * p[6] + c[1] * p[7] + c[2] * p[8]) + inv[5] * (c[3] * p[6] + c[4] * p[7] + c[5] * p[8]) + inv[8] * (c[6] * p[6] + c[7] * p[7] + c[8] * p[8])};
 
 	/* apply correction to the estimated angles **************/
-	handle->yaw += k[0] * (-handle->heCompass->y_M - h[0]) + k[1] * (handle->heCompass->x_M - h[1]) + k[2] * (-handle->heCompass->z_M - h[2]);
-	handle->roll += k[3] * (-handle->heCompass->y_M - h[0]) + k[4] * (handle->heCompass->x_M - h[1]) + k[5] * (-handle->heCompass->z_M - h[2]);
-	handle->pitch += k[6] * (-handle->heCompass->y_M - h[0]) + k[7] * (handle->heCompass->x_M - h[1]) + k[8] * (-handle->heCompass->z_M - h[2]);
+	handle->yaw += k[0] * (handle->heCompass->y_M - h[0]) + k[1] * (handle->heCompass->x_M - h[1]) + k[2] * (handle->heCompass->z_M - h[2]);
+	handle->roll += k[3] * (handle->heCompass->y_M - h[0]) + k[4] * (handle->heCompass->x_M - h[1]) + k[5] * (handle->heCompass->z_M - h[2]);
+	handle->pitch += k[6] * (handle->heCompass->y_M - h[0]) + k[7] * (handle->heCompass->x_M - h[1]) + k[8] * (handle->heCompass->z_M - h[2]);
 
 	/* update error convenience P of predicted angles ********/
 	handle->p[0] = p[0] * (-c[0] * k[0] - c[3] * k[1] - c[6] * k[2] + 1) + p[3] * (-c[1] * k[0] - c[4] * k[1] - c[7] * k[2]) + p[6] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);

@@ -79,6 +79,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		case Blue_Push_Button_Pin:	//blue button is pressed
 		{
+			himu.state = KAL_INIT;
 			//DEBUG: change which sensor value is send via USB
 			if(outputMode != 3)
 				++outputMode;
@@ -117,6 +118,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	{
 		lsm303agr_readSensorData_A(&heCompass);
 		i3g4250d_readSensorData(&hgyro1);
+		lsm303agr_readSensorData_M(&heCompass);
 
 	}
 }
@@ -185,13 +187,14 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			case lsm303agr_GetAcceleration:
 			{
 				lsm303agr_calcSensorData_A(&heCompass);
-				himu.state = KAL_UPDATE;
+				himu.state = KAL_UPDATEACC;
 				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 			case lsm303agr_GetMagneticFieldStrength:
 			{
 				lsm303agr_calcSensorData_M(&heCompass);
+				himu.state = KAL_UPDATEMAG;
 				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
@@ -294,17 +297,24 @@ int main(void)
 			  himu.state = KAL_NONE;
 			  break;
 		  }
-		  case KAL_UPDATE:
+		  case KAL_UPDATEACC:
 		  {
 			  imu_updateAngles_acc_EKF(&himu);
-			  sendSensorDataString(&himu, outputMode);
+			  sendSensorDataFloat(&himu);
+			  himu.state = KAL_NONE;
+			  break;
+		  }
+		  case KAL_UPDATEMAG:
+		  {
+			  imu_updateAngles_mag_EKF(&himu);
+			  sendSensorDataFloat(&himu);
 			  himu.state = KAL_NONE;
 			  break;
 		  }
 		  case KAL_PREDICT:
 		  {
 			  imu_predictAngles_kalmanFilter(&himu);
-			  sendSensorDataString(&himu, outputMode);
+			  sendSensorDataFloat(&himu);
 			  himu.state = KAL_NONE;
 			  break;
 		  }

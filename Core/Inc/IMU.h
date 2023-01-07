@@ -38,7 +38,8 @@ typedef enum _kalman_state
 {
 	KAL_NONE,
 	KAL_INIT,
-	KAL_UPDATE,
+	KAL_UPDATEACC,
+	KAL_UPDATEMAG,
 	KAL_PREDICT
 }kalman_state;
 
