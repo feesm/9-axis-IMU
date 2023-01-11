@@ -109,10 +109,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	// Check which version of the timer triggered this callback
 	if (htim == &htim17 )//50Hz
 	{
+		lsm303agr_readSensorData_M(&heCompass);
 		lsm303agr_readSensorData_A(&heCompass);
 		i3g4250d_readSensorData(&hgyro1);
-		lsm303agr_readSensorData_M(&heCompass);
-
 	}
 }
 //SPI DMA finished receiving and transmitting data
@@ -129,7 +128,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 			hgyro1.currentTask=i3g4250d_NONE;
 			//calculate measurement values
 			i3g4250d_calcSensorData(&hgyro1);
-			himu.state = KAL_PREDICT;
+			if(himu.state != KAL_PREINIT && himu.state != KAL_INIT)
+				himu.state = KAL_PREDICT;
 		}
 		else if(hgyro1.currentTask==i3g4250d_GETTEMPERATURE) //new raw temperature data available
 		{
@@ -180,14 +180,18 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 			case lsm303agr_GetAcceleration:
 			{
 				lsm303agr_calcSensorData_A(&heCompass);
-				himu.state = KAL_UPDATEACC;
+				if(himu.state != KAL_PREINIT && himu.state != KAL_INIT)
+					himu.state = KAL_UPDATEACC;
 				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
 			case lsm303agr_GetMagneticFieldStrength:
 			{
 				lsm303agr_calcSensorData_M(&heCompass);
-				himu.state = KAL_UPDATEMAG;
+				if(himu.state == KAL_PREINIT)
+					himu.state = KAL_INIT;
+				else
+					himu.state = KAL_UPDATEMAG;
 				heCompass.currentTask = lsm303agr_NONE;
 				break;
 			}
@@ -229,7 +233,33 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 		lsm303agr_startNextTask(&heCompass);
 	}
 }
-
+void showNorth(imu *handle)
+{
+  	HAL_GPIO_WritePin(GPIOE,LD3_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD4_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD5_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD6_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD7_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD8_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD9_Pin,GPIO_PIN_RESET);
+  	HAL_GPIO_WritePin(GPIOE,LD10_Pin,GPIO_PIN_RESET);
+  	if(0.39 >= handle->yaw && handle->yaw >= -0.39)
+  		HAL_GPIO_WritePin(GPIOE,LD3_Pin,GPIO_PIN_SET);
+  	else if(1.18 >= handle->yaw && handle->yaw > 0.39)
+  		HAL_GPIO_WritePin(GPIOE,LD4_Pin,GPIO_PIN_SET);
+  	else if(-0.39 > handle->yaw && handle->yaw >= -1.18)
+  		HAL_GPIO_WritePin(GPIOE,LD5_Pin,GPIO_PIN_SET);
+  	else if(-1.18 > handle->yaw && handle->yaw >= -1.96)
+  		HAL_GPIO_WritePin(GPIOE,LD7_Pin,GPIO_PIN_SET);
+  	else if(1.96 >= handle->yaw && handle->yaw > 1.18)
+  		HAL_GPIO_WritePin(GPIOE,LD6_Pin,GPIO_PIN_SET);
+  	else if(-1.96 > handle->yaw && handle->yaw >= -2.66)
+  		HAL_GPIO_WritePin(GPIOE,LD9_Pin,GPIO_PIN_SET);
+  	else if(2.66 >= handle->yaw && handle->yaw > 1.96)
+  		HAL_GPIO_WritePin(GPIOE,LD8_Pin,GPIO_PIN_SET);
+  	else
+  		HAL_GPIO_WritePin(GPIOE,LD10_Pin,GPIO_PIN_SET);
+}
 
 /* USER CODE END 0 */
 
@@ -268,12 +298,11 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   //start timer
-  HAL_TIM_Base_Start_IT(&htim16);
   HAL_TIM_Base_Start_IT(&htim17);
   //configure sensor
   i3g4250d_config(&hgyro1,&hspi1,CS_I2C_SPI_Pin,GPIOE,&hdma_spi1_rx,&hdma_spi1_tx);
   lsm303agr_config(&heCompass, &hi2c1, &hdma_i2c1_rx, &hdma_i2c1_tx);
-  himu.state = KAL_INIT;
+  himu.state = KAL_PREINIT;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -314,6 +343,7 @@ int main(void)
 			  break;
 		  }
 	  }
+  	  showNorth(&himu);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
