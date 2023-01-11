@@ -22,7 +22,7 @@ The software was developt with the STM32CubeIDE. Some parts of the main.c and th
 ## Current state of project
  - Library for I3G250D was created based on the HAL-library. The sensor data registers are read with DMA via SPI. After the communication finished a interrupt get called. In the interrupt the angular rate get calculated and low-pass-filtered. The functions can be used with a external interrupt from the data-ready-pin of the sensor.
  - Library for LSM303AGR was also created with the HAL-library. The sensor data registers are read with DMA via I2C. After finished communication, sensor value get calculated in interrupt and low-pass filtered. The functions can be used with a external interrupt from the data-ready-pins of the sensor.
- - Calculation of pitch, roll and yaw angle based on acceleration, magnetometer and gyroscope data. Sensor fusion of the angles calculated with all sensors with a extended Kalman filter. 
+ - Calculation of pitch, roll and yaw angle based on acceleration, magnetometer and gyroscope data. Sensor fusion of the angles are calculated with a extended Kalman filter. Gyroscope is used for predict current state and the accelerometer and the magnetometer are used to update the estimation.
  - send inertial measurement unit data as String or as float values via USB to display it on a computer.
 
 ## Known issues
