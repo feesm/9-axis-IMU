@@ -5,7 +5,8 @@ This repository is an implementation of an inertial measurement unit created for
  1. Hardware
  2. Extern librarys
  3. Current state of project
- 4. Future projects
+ 4. Known issues
+ 5. Future projects
 
 ## Hardware
 The Discovery kit STM32F3DISCOVERY was used for the implementation. Following parts are used for the implementation:
@@ -21,9 +22,11 @@ The software was developt with the STM32CubeIDE. Some parts of the main.c and th
 ## Current state of project
  - Library for I3G250D was created based on the HAL-library. The sensor data registers are read with DMA via SPI. After the communication finished a interrupt get called. In the interrupt the angular rate get calculated and low-pass-filtered. The functions can be used with a external interrupt from the data-ready-pin of the sensor.
  - Library for LSM303AGR was also created with the HAL-library. The sensor data registers are read with DMA via I2C. After finished communication, sensor value get calculated in interrupt and low-pass filtered. The functions can be used with a external interrupt from the data-ready-pins of the sensor.
- - Calculation of pitch and roll angle based on acceleration and gyroscope data. Sensor fusion of the angles calculated with both sensors with complementary filter or a extended Kalman filter. 
+ - Calculation of pitch, roll and yaw angle based on acceleration, magnetometer and gyroscope data. Sensor fusion of the angles calculated with all sensors with a extended Kalman filter. 
  - send inertial measurement unit data as String or as float values via USB to display it on a computer.
 
+## Known issues
+- a pitch angle of 90 Degres will result in NaN for all three angles
+
 ## Future projects
- - fix issues with pitch angles of 90° and -90°
- - In addition, use magnetic field data to obtain long-term stable yaw data and higher accuracy of the other angles.
+ - This project is finished, everything is implemented. Maybe I'll cleanup some parts of the code in the future.
