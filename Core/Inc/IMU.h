@@ -37,6 +37,7 @@ extern "C" {
 typedef enum _kalman_state
 {
 	KAL_NONE,
+	KAL_PREINIT,
 	KAL_INIT,
 	KAL_UPDATEACC,
 	KAL_UPDATEMAG,

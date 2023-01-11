@@ -115,7 +115,7 @@ void imu_predictAngles_kalmanFilter(imu *handle)
 	/* get angle with Euler integration of f(x) **************/
 	handle->pitch -= (handle->hgyroscope->x * t)/ RADTODEG;
 	handle->roll -= (handle->hgyroscope->y * t)/ RADTODEG;
-	handle->yaw += (handle->hgyroscope->z * t)/ RADTODEG;
+	handle->yaw -= (handle->hgyroscope->z * t)/ RADTODEG;
 
 	/* calculate jacobian A of function f(x)******************/
 	float sp = sin(handle->pitch );
@@ -255,12 +255,12 @@ void imu_updateAngles_mag_EKF(imu *handle)
 			handle->p[8]};
 	float r[9] = {3,0,0,0,3,0,0,0,3};
 
-	float sp = sin(handle->pitch);
-	float sr = sin(handle->roll);
-	float sy = sin(handle->yaw);
-	float cp = cos(handle->pitch);
-	float cr = cos(handle->roll);
-	float cy = cos(handle->yaw);
+	volatile float sp = sin(handle->pitch);
+	volatile float sr = sin(handle->roll);
+	volatile float sy = sin(handle->yaw);
+	volatile float cp = cos(handle->pitch);
+	volatile float cr = cos(handle->roll);
+	volatile float cy = cos(handle->yaw);
 
 	/* predict values of magnetometer with estimated angles */
 	float h[3] = {handle->mag_x * cy * cp - handle->mag_z * sp,
@@ -268,15 +268,16 @@ void imu_updateAngles_mag_EKF(imu *handle)
 			handle->mag_x * (sr * sy + sp * cr * cy) + handle->mag_z * cr * cp};
 
 	/* calculate jacobian C of function h(x) *****************/
-	float c[9] = {0,
+	float c[9] = {-handle->mag_x * sy * cp,
+			0,
 			-handle->mag_x * sp * cy - handle->mag_z * cp,
-			-handle->mag_x * sy * cp,
+			handle->mag_x * (-sr * sy * sp - cr * cy),
 			handle->mag_x * (-sr * sy - sp * cr * cy) + handle->mag_z * cr * cp,
 			handle->mag_x * sr * cy * cp - handle->mag_z * sr * sp,
-			handle->mag_x * (-sr * sy * sp - cr * cy),
+			handle->mag_x * (sr * cy - sy * sp * cr),
 			handle->mag_x * (sr * sp * cy + sy * cr) - handle->mag_z * sr * cp,
-			handle->mag_x * cr * cy * cp - handle->mag_z * sp * cr,
-			handle->mag_x * (sr * cy - sy * sp * cr)};
+			handle->mag_x * cr * cy * cp - handle->mag_z * sp * cr
+			};
 
 	/* calculate kalman gain K *******************************/
 	//G=c*p*ct+r
@@ -318,9 +319,9 @@ void imu_updateAngles_mag_EKF(imu *handle)
 			inv[2] * (c[0] * p[6] + c[1] * p[7] + c[2] * p[8]) + inv[5] * (c[3] * p[6] + c[4] * p[7] + c[5] * p[8]) + inv[8] * (c[6] * p[6] + c[7] * p[7] + c[8] * p[8])};
 
 	/* apply correction to the estimated angles **************/
-	handle->yaw += k[0] * (handle->heCompass->y_M - h[0]) + k[1] * (handle->heCompass->x_M - h[1]) + k[2] * (handle->heCompass->z_M - h[2]);
-	handle->roll += k[3] * (handle->heCompass->y_M - h[0]) + k[4] * (handle->heCompass->x_M - h[1]) + k[5] * (handle->heCompass->z_M - h[2]);
-	handle->pitch += k[6] * (handle->heCompass->y_M - h[0]) + k[7] * (handle->heCompass->x_M - h[1]) + k[8] * (handle->heCompass->z_M - h[2]);
+	handle->yaw += k[0] * (handle->heCompass->y_M - h[0]) + k[1] * (-handle->heCompass->x_M - h[1]) + k[2] * (handle->heCompass->z_M - h[2]);
+	handle->roll += k[3] * (-handle->heCompass->y_M - h[0]) + k[4] * (-handle->heCompass->x_M - h[1]) + k[5] * (handle->heCompass->z_M - h[2]);
+	handle->pitch += k[6] * (handle->heCompass->y_M - h[0]) + k[7] * (-handle->heCompass->x_M - h[1]) + k[8] * (handle->heCompass->z_M - h[2]);
 
 	/* update error convenience P of predicted angles ********/
 	handle->p[0] = p[0] * (-c[0] * k[0] - c[3] * k[1] - c[6] * k[2] + 1) + p[3] * (-c[1] * k[0] - c[4] * k[1] - c[7] * k[2]) + p[6] * (-c[2] * k[0] - c[5] * k[1] - c[8] * k[2]);
@@ -332,4 +333,10 @@ void imu_updateAngles_mag_EKF(imu *handle)
 	handle->p[6] = p[0] * (-c[0] * k[6] - c[3] * k[7] - c[6] * k[8]) + p[3] * (-c[1] * k[6] - c[4] * k[7] - c[7] * k[8]) + p[6] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
 	handle->p[7] = p[1] * (-c[0] * k[6] - c[3] * k[7] - c[6] * k[8]) + p[4] * (-c[1] * k[6] - c[4] * k[7] - c[7] * k[8]) + p[7] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
 	handle->p[8] = p[2] * (-c[0] * k[6] - c[3] * k[7] - c[6] * k[8]) + p[5] * (-c[1] * k[6] - c[4] * k[7] - c[7] * k[8]) + p[8] * (-c[2] * k[6] - c[5] * k[7] - c[8] * k[8] + 1);
+
+	/*keep yaw values between +pi and -pi*/
+	if(handle->yaw > 3.141)
+		handle->yaw -= 6.283;
+	else if(handle->yaw < -3.141)
+		handle->yaw += 6.283;
 }
