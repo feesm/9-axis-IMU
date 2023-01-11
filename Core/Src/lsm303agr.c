@@ -382,9 +382,9 @@ void lsm303agr_calcSensorData_M(lsm303agr *handle)
 	for(int i=0;i<3;i++)
 		raw[i]=handle->rxBuf[2*i]|handle->rxBuf[2*i+1]<<8;
 
-	handle->x_M = LPF_MAG_ALPHA * handle->x_M + (1 - LPF_MAG_ALPHA) * (raw[0]*0.15);
-	handle->y_M = LPF_MAG_ALPHA * handle->y_M + (1 - LPF_MAG_ALPHA) * (raw[1]*0.15);
-	handle->z_M = LPF_MAG_ALPHA * handle->z_M + (1 - LPF_MAG_ALPHA) * (raw[2]*0.15);
+	handle->x_M = LPF_MAG_ALPHA * handle->x_M + (1 - LPF_MAG_ALPHA) * (raw[0]*0.15 + OFFSET_X_M);
+	handle->y_M = LPF_MAG_ALPHA * handle->y_M + (1 - LPF_MAG_ALPHA) * (raw[1]*0.15 + OFFSET_Y_M);
+	handle->z_M = LPF_MAG_ALPHA * handle->z_M + (1 - LPF_MAG_ALPHA) * (raw[2]*0.15 + OFFSET_Z_M);
 }
 
 /* function:		lsm303agr_startNextTask

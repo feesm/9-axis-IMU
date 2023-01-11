@@ -117,6 +117,10 @@ extern "C" {
 #define OFFSET_Y_A		-0.074806667
 #define OFFSET_Z_A		0.0
 
+#define OFFSET_X_M		18
+#define OFFSET_Y_M		-27
+#define OFFSET_Z_M		-50.75
+
 #define LPF_ACC_ALPHA		0.1
 #define LPF_MAG_ALPHA		0.1
 
