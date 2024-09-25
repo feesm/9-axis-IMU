@@ -1,5 +1,11 @@
 # 9-axis-IMU
-This repository is an implementation of an inertial measurement unit created for private purposes.
+This repository is an implementation of an inertial measurement unit created for private purposes. I did this to learn about microcontrollers and sensors. I wrote this code before I went to university. Looking back, this code looks like a mess and I would do many things differently.
+
+>[!WARNING]
+>The extended Kalman filter contains several errors in the prediction step and does **not** predict the correct state of the Euler angles.
+>Due to the update step, the Euler angles will still be close to the actual Euler angles, but worse than the accelerometer data.
+>
+>If you are looking for an implementation of an extended Kalman filter for these sensors, you can get my functioning template class from [this](https://github.com/feesm/SEFL) repository.
 
 ## Overview
  1. Hardware
